@@ -337,7 +337,7 @@ export function OnboardingForm({ onSubmit }: { onSubmit?: () => void } = {}) {
 
       {/* Footer */}
       <p className="text-center text-xs py-8" style={{ color: 'hsl(230 15% 60%)' }}>
-        Built with Antigravity · For Java Spring Monoliths
+        Developer Contact : uhaseeb85@gmail.com
       </p>
     </div>
   );
