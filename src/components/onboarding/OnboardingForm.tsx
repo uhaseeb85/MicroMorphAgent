@@ -20,7 +20,7 @@ function loadSaved() {
 }
 
 type Granularity = 'coarse' | 'balanced' | 'fine';
-type AnalysisMode = 'ai' | 'static';
+type AnalysisMode = 'ai' | 'static' | 'demo';
 type LLMProvider = 'openrouter';
 
 const GRANULARITY_OPTIONS: { value: Granularity; label: string; sub: string; hint: string }[] = [
@@ -75,19 +75,24 @@ export function OnboardingForm({ onSubmit }: { onSubmit?: () => void } = {}) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (repos.some(r => !r.url.trim())) {
-      alert('Please provide at least one repository URL');
-      return;
-    }
     if (analysisMode === 'ai') {
       if (!openRouterKey) { alert('OpenRouter API Key is required'); return; }
+    }
+    
+    // Auto-fill dummy repo for demo
+    let finalRepos = repos;
+    if (analysisMode === 'demo' && repos.every(r => !r.url.trim())) {
+      finalRepos = [{ url: 'https://github.com/spring-projects/spring-petclinic', role: 'primary' }];
+    } else if (repos.some(r => !r.url.trim())) {
+      alert('Please provide at least one repository URL');
+      return;
     }
 
     const config: AnalysisConfig = {
       githubToken,
       llmProvider: 'openrouter',
       openRouterApiKey: openRouterKey,
-      repos,
+      repos: finalRepos,
       options: {
         maxCommitHistory: 300,
         includeTestFiles: false,
@@ -244,6 +249,10 @@ export function OnboardingForm({ onSubmit }: { onSubmit?: () => void } = {}) {
                 {
                   value: 'static' as AnalysisMode, label: 'Static Analysis', sub: 'Fast AST',
                   icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
+                },
+                {
+                  value: 'demo' as AnalysisMode, label: 'Demo Mode', sub: 'Interactive Walkthrough',
+                  icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polygon points="10 8 16 12 10 16 10 8" /></svg>
                 }
               ]).map(opt => (
                 <button key={opt.value} type="button" onClick={() => setAnalysisMode(opt.value)}

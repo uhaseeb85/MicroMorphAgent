@@ -31,6 +31,10 @@ export class Orchestrator {
       repos: this.config.repos.map(r => r.url)
     });
 
+    if (this.config.options.analysisMode === 'demo') {
+      return this.runDemo();
+    }
+
     try {
       const repoFetcher = new RepoFetcher(this.config.githubToken);
       const gitFetcher = new GitHistoryFetcher(this.config.githubToken);
@@ -227,6 +231,157 @@ export class Orchestrator {
       store.setError(error.message || String(error));
       throw error;
     }
+  }
+
+  private async runDemo(): Promise<DecompositionPlan> {
+    const store = useAnalysisStore.getState();
+    const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
+
+    store.setAnalyzing(true);
+    
+    // Phase 1
+    store.setPhase(1, 'Discovering repository structure and analyzing Maven/Gradle files...');
+    store.addActivity({ type: 'pom', message: 'Fetching pom.xml from repository...', status: 'pending' });
+    await sleep(800);
+    store.addActivity({ type: 'pom', message: 'Parsed POM: spring-petclinic (org.springframework.samples)', status: 'success' });
+
+    // Phase 2
+    store.setPhase(2, 'Fetching Java source files via GitHub API...');
+    store.addActivity({ type: 'git', message: 'Scanning repository for Java files...', status: 'pending' });
+    await sleep(600);
+    const mockFilesCount = 42;
+    store.addActivity({ type: 'git', message: `Found ${mockFilesCount} Java files`, status: 'success' });
+    store.setFileProgress(0, mockFilesCount, '');
+    for (let i = 0; i < mockFilesCount; i++) {
+       if (i % 5 === 0) {
+         store.setFileProgress(i, mockFilesCount, `petclinic/model/Owner${i}.java`);
+         await sleep(50);
+       }
+    }
+    store.setFileProgress(mockFilesCount, mockFilesCount, 'petclinic/PetClinicApplication.java');
+
+    // Phase 3
+    store.setPhase(3, 'Fetching Git Commit History for Co-Change Analysis...');
+    store.addActivity({ type: 'git', message: 'Fetching last 300 commits...', status: 'pending' });
+    await sleep(1000);
+    store.setGitProgress(300);
+    store.addActivity({ type: 'git', message: 'Fetched 300 commits for analysis', status: 'success' });
+    store.setPhase(3, 'Constructing Co-Change Matrix...');
+    await sleep(500);
+    store.setGraphStats(0, 12);
+    store.addActivity({ type: 'graph', message: 'Identified 12 strong co-change patterns', status: 'success' });
+    store.setPhase(3, 'Building Unified Dependency Graph...');
+    await sleep(400);
+    store.setGraphStats(42, 12);
+    store.addActivity({ type: 'graph', message: 'Built graph with 42 nodes and 156 edges', status: 'success' });
+
+    // Phase 4
+    store.setPhase(4, 'Generating semantic package summaries via LLM...');
+    const demoPackages = ['owner', 'vet', 'visit', 'pet', 'system'];
+    store.setPackageProgress(0, demoPackages.length, '');
+    store.setLLMProgress(0, demoPackages.length, '');
+    for(let i=0; i<demoPackages.length; i++) {
+      store.setLLMProgress(i, demoPackages.length, `Summarizing ${demoPackages[i]}...`);
+      await sleep(1200);
+      store.addActivity({ type: 'llm', message: `Analyzed package: ${demoPackages[i]}`, status: 'success' });
+      store.setPackageProgress(i+1, demoPackages.length, demoPackages[i]);
+    }
+
+    // Phase 5
+    store.setPhase(5, 'Identifying Microservice Bounded Contexts...');
+    await sleep(1500);
+    store.addActivity({ type: 'llm', message: 'Identified 3 bounded contexts: Customer, Veterinary, Clinic', status: 'success' });
+    
+    store.setPhase(5, 'Generating Extraction Roadmap...');
+    await sleep(1000);
+    store.addActivity({ type: 'llm', message: 'Generated roadmap with 3 steps and 2 transactional risks', status: 'success' });
+
+    store.setPhase(5, 'Generating module structures for each microservice...');
+    await sleep(800);
+    store.addActivity({ type: 'llm', message: 'Generated Maven module structures for Customer Service', status: 'success' });
+    await sleep(500);
+    store.addActivity({ type: 'llm', message: 'Generated Maven module structures for Vet Service', status: 'success' });
+
+    // Final Plan
+    const plan: DecompositionPlan = {
+      generatedAt: new Date().toISOString(),
+      reposAnalyzed: ['https://github.com/spring-projects/spring-petclinic'],
+      dependencyGraph: [],
+      sharedLibAssessment: [],
+      transactionalRisks: [
+        {
+          description: 'Distributed transaction between Owner and Visit during deletion',
+          affectedClasses: ['OwnerController', 'VisitRepository'],
+          affectedDomains: ['Customer', 'Clinic'],
+          severity: 'high',
+          mitigationPattern: 'saga',
+          explanation: 'Deleting an owner requires cascading deletes for visits across service boundaries.'
+        }
+      ],
+      extractionRoadmap: [
+        { order: 1, boundedContext: 'Customer', estimatedEffort: 'weeks', blockers: [], patternRecommendations: ['Strangler Fig'], sagaRequired: true },
+        { order: 2, boundedContext: 'Veterinary', estimatedEffort: 'days', blockers: [], patternRecommendations: ['Direct Migration'], sagaRequired: false }
+      ],
+      boundedContexts: [
+        {
+          name: 'Customer',
+          suggestedServiceName: 'customer-service',
+          packages: ['org.springframework.samples.petclinic.owner'],
+          entities: ['Owner', 'Pet', 'PetType'],
+          apis: ['GET /owners', 'POST /owners', 'GET /owners/{id}'],
+          inboundDependencyCount: 2,
+          outboundDependencyCount: 1,
+          sharedTableConflicts: ['visits'],
+          riskScore: 'medium',
+          riskRationale: 'Central domain with high shared data usage.',
+          llmRationale: 'The owner package contains the core entities but shares data with visits, requiring a saga pattern for consistency.',
+          proposedModuleStructure: {
+            rootArtifactId: 'customer-service',
+            mavenGroupId: 'com.petclinic.customer',
+            directories: [
+              { path: 'src/main/java/com/petclinic/customer/domain', description: 'Domain Entities', files: ['Owner.java', 'Pet.java'] },
+              { path: 'src/main/java/com/petclinic/customer/web', description: 'REST Controllers', files: ['OwnerController.java'] }
+            ],
+            keyClasses: ['Owner', 'Pet'],
+            exposedApis: ['GET /api/v1/customers'],
+            consumedApis: [],
+            databaseSchema: 'Owns owners, pets tables.',
+            dockerfileSuggestion: 'FROM eclipse-temurin:21-jre'
+          }
+        },
+        {
+          name: 'Veterinary',
+          suggestedServiceName: 'vet-service',
+          packages: ['org.springframework.samples.petclinic.vet'],
+          entities: ['Vet', 'Specialty'],
+          apis: ['GET /vets'],
+          inboundDependencyCount: 0,
+          outboundDependencyCount: 0,
+          sharedTableConflicts: [],
+          riskScore: 'low',
+          riskRationale: 'Self-contained reference data.',
+          llmRationale: 'The vet package is purely informational and rarely changes alongside owners or visits.',
+          proposedModuleStructure: {
+            rootArtifactId: 'vet-service',
+            mavenGroupId: 'com.petclinic.vet',
+            directories: [
+              { path: 'src/main/java/com/petclinic/vet/domain', description: 'Domain Entities', files: ['Vet.java'] }
+            ],
+            keyClasses: ['Vet'],
+            exposedApis: ['GET /api/v1/vets'],
+            consumedApis: [],
+            databaseSchema: 'Owns vets, specialties tables.',
+            dockerfileSuggestion: 'FROM eclipse-temurin:21-jre'
+          }
+        }
+      ]
+    };
+
+    await sleep(500);
+    store.setPlan(plan);
+    store.setAnalyzing(false);
+    store.setPhase(6, 'Analysis Complete!');
+    return plan;
   }
 
   private generateStaticBoundedContexts(javaClasses: JavaClass[]): BoundedContext[] {

@@ -20,7 +20,7 @@ export interface AnalysisOptions {
   gitCoChangeWindowDays: number;
   llmModel: string;
   granularity: 'coarse' | 'balanced' | 'fine';
-  analysisMode: 'ai' | 'static';
+  analysisMode: 'ai' | 'static' | 'demo';
 }
 
 export interface JavaClass {
