@@ -12,52 +12,20 @@ interface StatCardProps {
 }
 
 const colorMap = {
-    blue: {
-        bg: 'hsl(220 80% 96%)',
-        border: 'hsl(220 70% 88%)',
-        iconBg: 'hsl(220 75% 60%)',
-        text: 'hsl(220 70% 45%)',
-        pulse: 'hsl(220 80% 60%)'
-    },
-    purple: {
-        bg: 'hsl(244 80% 96%)',
-        border: 'hsl(244 70% 88%)',
-        iconBg: 'hsl(244 75% 62%)',
-        text: 'hsl(244 70% 50%)',
-        pulse: 'hsl(244 80% 60%)'
-    },
-    green: {
-        bg: 'hsl(140 60% 96%)',
-        border: 'hsl(140 50% 88%)',
-        iconBg: 'hsl(140 55% 45%)',
-        text: 'hsl(140 55% 35%)',
-        pulse: 'hsl(140 60% 50%)'
-    },
-    orange: {
-        bg: 'hsl(35 90% 96%)',
-        border: 'hsl(35 80% 88%)',
-        iconBg: 'hsl(35 90% 50%)',
-        text: 'hsl(35 90% 40%)',
-        pulse: 'hsl(35 90% 55%)'
-    },
-    pink: {
-        bg: 'hsl(330 80% 96%)',
-        border: 'hsl(330 70% 88%)',
-        iconBg: 'hsl(330 75% 60%)',
-        text: 'hsl(330 70% 50%)',
-        pulse: 'hsl(330 80% 60%)'
-    }
+    blue: { bg: 'white', border: 'hsl(214 20% 90%)', iconBg: 'hsl(222 25% 15%)', icon: 'white', text: 'hsl(215 15% 45%)', pulse: 'hsl(222 25% 15%)' },
+    purple: { bg: 'white', border: 'hsl(214 20% 90%)', iconBg: 'hsl(222 25% 15%)', icon: 'white', text: 'hsl(215 15% 45%)', pulse: 'hsl(222 25% 15%)' },
+    green: { bg: 'white', border: 'hsl(214 20% 90%)', iconBg: 'hsl(222 25% 15%)', icon: 'white', text: 'hsl(215 15% 45%)', pulse: 'hsl(222 25% 15%)' },
+    orange: { bg: 'white', border: 'hsl(214 20% 90%)', iconBg: 'hsl(222 25% 15%)', icon: 'white', text: 'hsl(215 15% 45%)', pulse: 'hsl(222 25% 15%)' },
+    pink: { bg: 'white', border: 'hsl(214 20% 90%)', iconBg: 'hsl(222 25% 15%)', icon: 'white', text: 'hsl(215 15% 45%)', pulse: 'hsl(222 25% 15%)' }
 };
 
 export function StatCard({ icon, label, value, total, suffix = '', color, isActive, pulseText }: StatCardProps) {
     const [displayValue, setDisplayValue] = useState(0);
     const colors = colorMap[color];
 
-    // Animate the number counting up
     useEffect(() => {
         if (value === displayValue) return;
-
-        const duration = 600;
+        const duration = 800;
         const startTime = Date.now();
         const startValue = displayValue;
         const endValue = value;
@@ -65,16 +33,11 @@ export function StatCard({ icon, label, value, total, suffix = '', color, isActi
         const animate = () => {
             const elapsed = Date.now() - startTime;
             const progress = Math.min(elapsed / duration, 1);
-            // Ease out cubic
-            const easeProgress = 1 - Math.pow(1 - progress, 3);
+            const easeProgress = 1 - Math.pow(1 - progress, 4);
             const current = Math.round(startValue + (endValue - startValue) * easeProgress);
             setDisplayValue(current);
-
-            if (progress < 1) {
-                requestAnimationFrame(animate);
-            }
+            if (progress < 1) requestAnimationFrame(animate);
         };
-
         requestAnimationFrame(animate);
     }, [value]);
 
@@ -82,66 +45,55 @@ export function StatCard({ icon, label, value, total, suffix = '', color, isActi
 
     return (
         <div
-            className="rounded-2xl p-5 transition-all duration-300"
+            className="rounded-2xl p-6 transition-all border shadow-sm"
             style={{
-                background: colors.bg,
-                border: `1px solid ${colors.border}`,
-                boxShadow: isActive ? `0 0 20px ${colors.pulse}30` : 'none'
+                background: 'white',
+                borderColor: isActive ? 'hsl(222 25% 15%)' : 'hsl(214 20% 91%)',
             }}
         >
-            <div className="flex items-start justify-between mb-3">
+            <div className="flex items-center justify-between mb-4">
                 <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center transition-transform duration-300"
-                    style={{ background: colors.iconBg }}
+                    className="w-9 h-9 rounded-lg flex items-center justify-center"
+                    style={{ background: isActive ? 'hsl(222 25% 15%)' : 'hsl(210 20% 96%)' }}
                 >
-                    <div className="text-white">{icon}</div>
+                    <div style={{ color: isActive ? 'white' : 'hsl(215 15% 45%)' }}>{icon}</div>
                 </div>
-                {isActive && pulseText && (
-                    <div className="flex items-center gap-1.5">
-                        <span
-                            className="w-2 h-2 rounded-full animate-pulse"
-                            style={{ background: colors.pulse }}
-                        />
-                        <span className="text-[10px] font-medium uppercase tracking-wider" style={{ color: colors.text }}>
-                            {pulseText}
+                {isActive && (
+                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border bg-slate-50" style={{ borderColor: 'hsl(214 20% 90%)' }}>
+                        <span className="w-1.5 h-1.5 rounded-full animate-pulse bg-emerald-500" />
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">
+                            Active
                         </span>
                     </div>
                 )}
             </div>
 
-            <div className="space-y-1">
-                <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-black tracking-tight" style={{ color: 'hsl(230 25% 15%)' }}>
+            <div className="space-y-0.5">
+                <div className="flex items-baseline gap-1.5">
+                    <span className="text-3xl font-bold tracking-tight text-slate-900">
                         {displayValue.toLocaleString()}
                     </span>
                     {suffix && (
-                        <span className="text-sm font-medium" style={{ color: colors.text }}>
+                        <span className="text-xs font-bold uppercase tracking-widest text-slate-400">
                             {suffix}
                         </span>
                     )}
                 </div>
-
-                <p className="text-xs font-medium" style={{ color: 'hsl(230 15% 50%)' }}>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
                     {label}
                 </p>
             </div>
 
             {total !== undefined && total > 0 && (
-                <div className="mt-3">
-                    <div
-                        className="w-full h-1.5 rounded-full overflow-hidden"
-                        style={{ background: 'rgba(255,255,255,0.5)' }}
-                    >
+                <div className="mt-5 space-y-2">
+                    <div className="w-full h-1 rounded-full bg-slate-100 overflow-hidden">
                         <div
-                            className="h-full rounded-full transition-all duration-500"
-                            style={{
-                                width: `${percentage}%`,
-                                background: `linear-gradient(90deg, ${colors.iconBg}, ${colors.pulse})`
-                            }}
+                            className="h-full bg-slate-900 transition-all duration-700 ease-out"
+                            style={{ width: `${percentage}%` }}
                         />
                     </div>
-                    <p className="text-[10px] mt-1.5 font-medium" style={{ color: colors.text }}>
-                        {percentage}% of {total.toLocaleString()}
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400">
+                        {percentage}% Completeness
                     </p>
                 </div>
             )}

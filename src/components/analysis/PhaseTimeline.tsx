@@ -75,100 +75,77 @@ const phases = [
 
 export function PhaseTimeline({ currentPhase }: PhaseTimelineProps) {
     return (
-        <div
-            className="rounded-2xl p-5"
-            style={{ background: 'white', border: '1px solid hsl(230 20% 88%)' }}
-        >
-            <div className="flex items-center gap-2 mb-4">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'hsl(244 70% 55%)' }}>
-                    <circle cx="12" cy="12" r="10" />
-                    <polyline points="12 6 12 12 16 14" />
-                </svg>
-                <span className="text-xs font-bold uppercase tracking-wider" style={{ color: 'hsl(230 15% 45%)' }}>
+        <div className="rounded-2xl p-6 border shadow-sm bg-white" style={{ borderColor: 'hsl(214 20% 90%)' }}>
+            <div className="flex items-center gap-2.5 mb-6">
+                <div className="w-1.5 h-4 bg-slate-900 rounded-full" />
+                <span className="text-[11px] font-bold uppercase tracking-widest text-slate-900">
                     Analysis Pipeline
                 </span>
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1 relative">
                 {phases.map((phase, index) => {
                     const isCompleted = currentPhase > phase.number;
                     const isActive = currentPhase === phase.number;
                     const isPending = currentPhase < phase.number;
 
                     return (
-                        <div
-                            key={phase.number}
-                            className="flex items-center gap-3 p-2.5 rounded-xl transition-all duration-300"
-                            style={{
-                                background: isActive ? 'hsl(244 80% 97%)' : 'transparent',
-                                border: isActive ? '1px solid hsl(244 70% 88%)' : '1px solid transparent'
-                            }}
-                        >
-                            {/* Status indicator */}
+                        <div key={phase.number} className="relative">
                             <div
-                                className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all duration-300"
+                                className="flex items-center gap-4 p-3 rounded-xl transition-all duration-300"
                                 style={{
-                                    background: isCompleted
-                                        ? 'hsl(140 55% 93%)'
-                                        : isActive
-                                            ? 'linear-gradient(135deg, hsl(244 75% 62%), hsl(220 75% 68%))'
-                                            : 'hsl(230 20% 95%)',
-                                    color: isCompleted
-                                        ? 'hsl(140 55% 35%)'
-                                        : isActive
-                                            ? 'white'
-                                            : 'hsl(230 15% 60%)'
+                                    background: isActive ? 'hsl(210 20% 98%)' : 'transparent',
+                                    border: isActive ? '1px solid hsl(214 20% 90%)' : '1px solid transparent'
                                 }}
                             >
-                                {isCompleted ? (
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                        <polyline points="20 6 9 17 4 12" />
-                                    </svg>
-                                ) : isActive ? (
-                                    <span className="relative flex h-3 w-3">
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
-                                    </span>
-                                ) : (
-                                    <span className="text-xs font-bold">{phase.number}</span>
-                                )}
-                            </div>
-
-                            {/* Content */}
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                    <span
-                                        className="text-sm font-semibold"
-                                        style={{
-                                            color: isPending ? 'hsl(230 15% 60%)' : 'hsl(230 20% 25%)'
-                                        }}
-                                    >
-                                        {phase.title}
-                                    </span>
-                                    {isActive && (
-                                        <span
-                                            className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
-                                            style={{ background: 'hsl(244 80% 93%)', color: 'hsl(244 70% 50%)' }}
-                                        >
-                                            Active
-                                        </span>
+                                <div
+                                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all duration-500 shadow-sm"
+                                    style={{
+                                        background: isCompleted
+                                            ? 'hsl(210 20% 96%)'
+                                            : isActive
+                                                ? 'hsl(222 25% 15%)'
+                                                : 'white',
+                                        color: isCompleted
+                                            ? 'hsl(215 15% 45%)'
+                                            : isActive
+                                                ? 'white'
+                                                : 'hsl(215 15% 45%)',
+                                        border: isCompleted || isActive ? 'none' : '1px solid hsl(214 20% 90%)'
+                                    }}
+                                >
+                                    {isCompleted ? (
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                            <polyline points="20 6 9 17 4 12" />
+                                        </svg>
+                                    ) : (
+                                        <span className="text-[10px] font-bold">{phase.number}</span>
                                     )}
                                 </div>
-                                <p
-                                    className="text-xs truncate"
-                                    style={{ color: isPending ? 'hsl(230 15% 55%)' : 'hsl(230 15% 50%)' }}
-                                >
-                                    {phase.description}
-                                </p>
-                            </div>
 
-                            {/* Connector line (except for last item) */}
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm font-bold tracking-tight" style={{ color: isPending ? 'hsl(215 15% 65%)' : 'hsl(222 25% 15%)' }}>
+                                            {phase.title}
+                                        </span>
+                                        {isActive && (
+                                            <span className="text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-slate-900 text-white">
+                                                Active
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-[10px] font-medium tracking-tight truncate" style={{ color: isPending ? 'hsl(215 15% 70%)' : 'hsl(215 15% 50%)' }}>
+                                        {phase.description}
+                                    </p>
+                                </div>
+                            </div>
+                            
                             {index < phases.length - 1 && (
                                 <div
-                                    className="absolute left-[27px] w-0.5 h-6"
+                                    className="absolute left-[27px] w-[2px] h-4 z-0"
                                     style={{
-                                        background: isCompleted ? 'hsl(140 55% 70%)' : 'hsl(230 20% 90%)',
-                                        transform: 'translateY(28px)'
+                                        background: isCompleted ? 'hsl(222 25% 15%)' : 'hsl(214 20% 92%)',
+                                        top: '40px'
                                     }}
                                 />
                             )}

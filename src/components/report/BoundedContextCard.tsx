@@ -6,69 +6,67 @@ export function BoundedContextCard({ context }: { context: BoundedContext }) {
   const [expanded, setExpanded] = useState(false);
 
   const risk = context.riskScore;
-  const riskStyle = 
-    risk === 'low'    ? { bg: 'hsl(140 55% 93%)', color: 'hsl(140 55% 30%)', border: 'hsl(140 40% 80%)' } :
-    risk === 'medium' ? { bg: 'hsl(40 90% 93%)',  color: 'hsl(38 80% 35%)',  border: 'hsl(40 70% 78%)' } :
-                        { bg: 'hsl(0 80% 94%)',   color: 'hsl(0 70% 40%)',   border: 'hsl(0 60% 80%)' };
+  const riskColor =
+    risk === 'low'    ? 'text-emerald-600 bg-emerald-50 border-emerald-100' :
+    risk === 'medium' ? 'text-amber-600 bg-amber-50 border-amber-100' :
+                        'text-rose-600 bg-rose-50 border-rose-100';
 
   return (
-    <div className="rounded-2xl overflow-hidden flex flex-col transition-shadow hover:shadow-lg"
-         style={{ border: '1px solid hsl(230 20% 88%)', background: 'white', boxShadow: '0 2px 8px hsl(230 20% 85% / 40%)' }}>
+    <div className="rounded-2xl overflow-hidden flex flex-col transition-all hover:shadow-xl border bg-white"
+         style={{ borderColor: 'hsl(214 20% 90%)' }}>
       
       {/* Header */}
-      <div className="px-5 pt-5 pb-4">
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <div className="min-w-0">
-            <h3 className="text-lg font-bold leading-tight truncate" style={{ color: 'hsl(230 25% 15%)' }}>
+      <div className="px-6 pt-6 pb-4 bg-slate-50/30">
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div className="min-w-0 space-y-1">
+            <h3 className="text-xl font-bold tracking-tighter text-slate-900 truncate">
               {context.name}
             </h3>
-            <span className="font-mono text-xs mt-0.5 inline-block px-2 py-0.5 rounded"
-                  style={{ background: 'hsl(244 80% 96%)', color: 'hsl(244 70% 50%)' }}>
-              {context.suggestedServiceName}
-            </span>
+            <div className="flex items-center gap-2">
+                <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded border bg-white text-slate-500 border-slate-200">
+                    {context.suggestedServiceName}
+                </span>
+            </div>
           </div>
-          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shrink-0"
-                style={{ background: riskStyle.bg, color: riskStyle.color, border: `1px solid ${riskStyle.border}` }}>
-            {risk} risk
-          </span>
+          <div className={`text-[9px] font-bold px-2.5 py-1 rounded-lg border uppercase tracking-widest shrink-0 ${riskColor}`}>
+            {risk} RISK
+          </div>
         </div>
 
         {/* Stats row */}
-        <div className="flex gap-3 text-xs">
-          <div className="flex items-center gap-1" style={{ color: 'hsl(230 15% 50%)' }}>
-            <span style={{ color: 'hsl(244 70% 60%)' }}>📦</span>
-            {context.packages.length} packages
-          </div>
-          <div className="flex items-center gap-1" style={{ color: 'hsl(230 15% 50%)' }}>
-            <span>🗄️</span>
-            {context.entities.length} entities
-          </div>
-          <div className="flex items-center gap-1" style={{ color: 'hsl(230 15% 50%)' }}>
-            <span>🔌</span>
-            {context.apis.length} APIs
-          </div>
+        <div className="flex gap-4">
+          {[
+            { label: 'Artifacts', value: context.packages.length, icon: '📦' },
+            { label: 'Schemas', value: context.entities.length, icon: '🗄️' },
+            { label: 'APIs', value: context.apis.length, icon: '🔌' },
+          ].map(s => (
+            <div key={s.label} className="flex items-center gap-1.5">
+                <span className="text-xs">{s.icon}</span>
+                <span className="text-[10px] font-bold text-slate-900">{s.value}</span>
+                <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">{s.label}</span>
+            </div>
+          ))}
         </div>
       </div>
 
       {/* Rationale */}
-      <div className="px-5 pb-4">
-        <p className="text-sm leading-relaxed line-clamp-3" style={{ color: 'hsl(230 15% 45%)' }}>
+      <div className="px-6 py-4">
+        <p className="text-sm font-medium leading-relaxed text-slate-500 line-clamp-2">
           {context.llmRationale}
         </p>
       </div>
 
       {/* Entities pill list */}
       {context.entities.length > 0 && (
-        <div className="px-5 pb-4 flex flex-wrap gap-1.5">
-          {context.entities.slice(0, 5).map((e, i) => (
-            <span key={i} className="text-xs px-2 py-0.5 rounded font-mono"
-                  style={{ background: 'hsl(230 20% 95%)', color: 'hsl(230 25% 35%)', border: '1px solid hsl(230 20% 87%)' }}>
+        <div className="px-6 pb-4 flex flex-wrap gap-1.5">
+          {context.entities.slice(0, 3).map((e, i) => (
+            <span key={i} className="text-[9px] font-mono font-bold px-2 py-0.5 rounded border bg-slate-50 text-slate-400 border-slate-100">
               {e}
             </span>
           ))}
-          {context.entities.length > 5 && (
-            <span className="text-xs px-2 py-0.5 rounded" style={{ color: 'hsl(230 15% 55%)' }}>
-              +{context.entities.length - 5} more
+          {context.entities.length > 3 && (
+            <span className="text-[9px] font-bold uppercase tracking-widest text-slate-300 flex items-center">
+              +{context.entities.length - 3} MORE
             </span>
           )}
         </div>
@@ -76,21 +74,20 @@ export function BoundedContextCard({ context }: { context: BoundedContext }) {
 
       {/* Module Structure expand toggle */}
       {context.proposedModuleStructure && (
-        <div className="border-t" style={{ borderColor: 'hsl(230 20% 90%)' }}>
+        <div className="mt-auto border-t" style={{ borderColor: 'hsl(214 20% 92%)' }}>
           <button
             onClick={() => setExpanded(v => !v)}
-            className="w-full px-5 py-3 text-xs font-semibold flex items-center gap-2 transition-colors hover:bg-gray-50"
-            style={{ color: 'hsl(244 70% 55%)' }}
+            className="w-full px-6 py-4 text-[10px] font-bold uppercase tracking-widest flex items-center justify-between transition-colors bg-white hover:bg-slate-50 text-slate-500"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-            </svg>
-            {expanded ? 'Hide' : 'Show'} Module Structure
-            <span className="ml-auto text-[10px]">{expanded ? '▲' : '▼'}</span>
+            <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-slate-900" />
+                {expanded ? 'Hide' : 'Examine'} Blueprint
+            </div>
+            <span className="text-[10px] opacity-30">{expanded ? '▲' : '▼'}</span>
           </button>
 
           {expanded && (
-            <div className="px-4 pb-4">
+            <div className="px-4 pb-6 bg-slate-50/20">
               <ModuleStructureView structure={context.proposedModuleStructure} />
             </div>
           )}

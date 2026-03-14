@@ -12,33 +12,38 @@ function ServiceNav({ contexts, activeIdx, onSelect }: {
   onSelect: (i: number) => void;
 }) {
   return (
-    <nav className="rounded-2xl overflow-hidden sticky top-6" style={{ border: '1px solid hsl(230 20% 88%)', background: 'white' }}>
-      <div className="px-4 py-3 border-b text-[11px] font-bold uppercase tracking-widest"
-           style={{ borderColor: 'hsl(230 20% 90%)', color: 'hsl(230 15% 50%)', background: 'hsl(230 25% 97%)' }}>
-        {contexts.length} Services
+    <nav className="rounded-2xl overflow-hidden sticky top-6 border bg-white shadow-sm" style={{ borderColor: 'hsl(214 20% 90%)' }}>
+      <div className="px-5 py-4 border-b flex items-center gap-2 bg-slate-50"
+           style={{ borderColor: 'hsl(214 20% 92%)' }}>
+        <div className="w-1.5 h-3.5 bg-slate-900 rounded-full" />
+        <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
+          {contexts.length} Core Services
+        </span>
       </div>
-      <ul className="py-1">
+      <ul className="py-2">
         {contexts.map((ctx, i) => {
-          const riskDot =
-            ctx.riskScore === 'low'    ? 'hsl(140 55% 45%)' :
-            ctx.riskScore === 'medium' ? 'hsl(40 90% 45%)' :
-                                         'hsl(0 70% 50%)';
+          const riskColor =
+            ctx.riskScore === 'low'    ? 'bg-emerald-500' :
+            ctx.riskScore === 'medium' ? 'bg-amber-500' :
+                                         'bg-rose-500';
           return (
             <li key={i}>
               <button
                 onClick={() => onSelect(i)}
-                className="w-full text-left px-4 py-2.5 flex items-center gap-2.5 text-sm transition-colors"
+                className="w-full text-left px-5 py-3 flex items-center gap-3 text-sm transition-all group"
                 style={activeIdx === i ? {
-                  background: 'hsl(244 80% 96%)',
-                  color: 'hsl(244 70% 50%)',
-                  fontWeight: 600
+                  background: 'hsl(210 20% 98%)',
+                  color: 'hsl(222 25% 15%)',
+                  fontWeight: 700
                 } : {
-                  color: 'hsl(230 15% 40%)'
+                  color: 'hsl(215 15% 45%)'
                 }}
               >
-                <span className="w-2 h-2 rounded-full shrink-0" style={{ background: riskDot }} />
-                <span className="truncate">{ctx.suggestedServiceName}</span>
-                {activeIdx === i && <span className="ml-auto text-[10px]">▶</span>}
+                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${riskColor}`} />
+                <span className="truncate tracking-tight">{ctx.suggestedServiceName}</span>
+                {activeIdx === i && (
+                    <div className="ml-auto w-1 h-4 bg-slate-900 rounded-full" />
+                )}
               </button>
             </li>
           );
@@ -50,123 +55,137 @@ function ServiceNav({ contexts, activeIdx, onSelect }: {
 
 function ServiceDetail({ context, index, total }: { context: BoundedContext; index: number; total: number }) {
   const risk = context.riskScore;
-  const riskStyle =
-    risk === 'low'    ? { bg: 'hsl(140 55% 93%)', color: 'hsl(140 55% 30%)', border: 'hsl(140 40% 80%)' } :
-    risk === 'medium' ? { bg: 'hsl(40 90% 93%)',  color: 'hsl(38 80% 35%)',  border: 'hsl(40 70% 78%)' } :
-                        { bg: 'hsl(0 80% 94%)',   color: 'hsl(0 70% 40%)',   border: 'hsl(0 60% 80%)' };
+  const riskColor =
+    risk === 'low'    ? 'text-emerald-600 bg-emerald-50 border-emerald-100' :
+    risk === 'medium' ? 'text-amber-600 bg-amber-50 border-amber-100' :
+                        'text-rose-600 bg-rose-50 border-rose-100';
 
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid hsl(230 20% 88%)', background: 'white' }}>
-      {/* Service Header */}
-      <div className="px-6 py-5 border-b" style={{ borderColor: 'hsl(230 20% 90%)', background: 'hsl(230 25% 97%)' }}>
-        <div className="flex items-start justify-between gap-4 mb-1">
-          <div>
-            <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'hsl(230 15% 55%)' }}>
-              Service {index + 1} of {total}
+    <div className="rounded-2xl overflow-hidden border bg-white shadow-sm" style={{ borderColor: 'hsl(214 20% 90%)' }}>
+      <div className="px-8 py-6 border-b bg-slate-50/50" style={{ borderColor: 'hsl(214 20% 92%)' }}>
+        <div className="flex items-start justify-between gap-6">
+          <div className="space-y-1">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              Service Infrastructure {index + 1} / {total}
             </span>
-            <h2 className="text-2xl font-black tracking-tight mt-0.5" style={{ color: 'hsl(230 25% 12%)' }}>
+            <h2 className="text-3xl font-bold tracking-tighter text-slate-900">
               {context.name}
             </h2>
-            <span className="font-mono text-sm px-2.5 py-0.5 rounded mt-1 inline-block"
-                  style={{ background: 'hsl(244 80% 95%)', color: 'hsl(244 70% 48%)' }}>
-              {context.suggestedServiceName}
-            </span>
+            <div className="flex items-center gap-2 mt-2">
+                <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded border bg-white text-slate-600 border-slate-200">
+                    {context.suggestedServiceName}
+                </span>
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest px-2">
+                    Internal Target
+                </span>
+            </div>
           </div>
-          <span className="text-[11px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider shrink-0 mt-1"
-                style={{ background: riskStyle.bg, color: riskStyle.color, border: `1px solid ${riskStyle.border}` }}>
-            {risk} risk
-          </span>
+          <div className={`text-[10px] font-bold px-3 py-1.5 rounded-lg border uppercase tracking-widest shrink-0 ${riskColor}`}>
+            LEVEL: {risk} RISK
+          </div>
         </div>
       </div>
 
-      <div className="p-6 space-y-6">
-        {/* Rationale */}
-        <div>
-          <h4 className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: 'hsl(230 15% 50%)' }}>
-            Decomposition Rationale
-          </h4>
-          <p className="text-sm leading-relaxed" style={{ color: 'hsl(230 15% 35%)' }}>
-            {context.llmRationale}
-          </p>
-          {context.riskRationale && (
-            <p className="text-xs mt-2 leading-relaxed" style={{ color: 'hsl(0 60% 45%)' }}>
-              ⚠️ {context.riskRationale}
-            </p>
-          )}
-        </div>
-
-        {/* Stats row */}
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: 'Packages',    value: context.packages.length,  icon: '📦' },
-            { label: 'Entities',    value: context.entities.length,  icon: '🗄️' },
-            { label: 'APIs',        value: context.apis.length,      icon: '🔌' },
-          ].map(s => (
-            <div key={s.label} className="rounded-xl p-3 text-center" style={{ background: 'hsl(230 25% 97%)', border: '1px solid hsl(230 20% 90%)' }}>
-              <div className="text-xl mb-0.5">{s.icon}</div>
-              <div className="font-bold text-lg" style={{ color: 'hsl(230 25% 15%)' }}>{s.value}</div>
-              <div className="text-[11px]" style={{ color: 'hsl(230 15% 55%)' }}>{s.label}</div>
+      <div className="p-8 space-y-10">
+        <div className="grid lg:grid-cols-2 gap-10">
+            <div>
+              <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
+                <div className="w-1 h-3 bg-slate-300 rounded-full" />
+                Contextual Rationale
+              </h4>
+              <p className="text-sm leading-relaxed text-slate-600 font-medium">
+                {context.llmRationale}
+              </p>
+              {context.riskRationale && (
+                <div className="mt-4 p-4 rounded-xl border border-rose-100 bg-rose-50/50">
+                    <p className="text-[11px] font-bold text-rose-600 leading-relaxed uppercase tracking-tight">
+                        Security & Transactional Boundary Note:
+                    </p>
+                    <p className="text-xs mt-1 text-rose-700 leading-relaxed font-medium">
+                        {context.riskRationale}
+                    </p>
+                </div>
+              )}
             </div>
-          ))}
-        </div>
 
-        {/* Packages */}
-        <div>
-          <h4 className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: 'hsl(230 15% 50%)' }}>
-            Owned Packages
-          </h4>
-          <div className="flex flex-wrap gap-1.5">
-            {context.packages.map((p, i) => (
-              <span key={i} className="text-xs font-mono px-2 py-1 rounded" title={p}
-                    style={{ background: 'hsl(244 80% 97%)', color: 'hsl(244 60% 50%)', border: '1px solid hsl(244 60% 88%)' }}>
-                {p.split('.').slice(-2).join('.')}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* Entities */}
-        {context.entities.length > 0 && (
-          <div>
-            <h4 className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: 'hsl(230 15% 50%)' }}>
-              JPA Entities
-            </h4>
-            <div className="flex flex-wrap gap-1.5">
-              {context.entities.map((e, i) => (
-                <span key={i} className="text-xs font-mono px-2 py-1 rounded"
-                      style={{ background: 'hsl(230 20% 95%)', color: 'hsl(230 25% 35%)', border: '1px solid hsl(230 20% 87%)' }}>
-                  {e}
-                </span>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {[
+                { label: 'Artifacts', value: context.packages.length, icon: '📦' },
+                { label: 'Schemas', value: context.entities.length, icon: '🗄️' },
+                { label: 'Endpoints', value: context.apis.length, icon: '🔌' },
+              ].map(s => (
+                <div key={s.label} className="rounded-xl p-5 border text-center bg-slate-50/30" style={{ borderColor: 'hsl(214 20% 92%)' }}>
+                  <div className="text-xl mb-2">{s.icon}</div>
+                  <div className="font-bold text-2xl text-slate-900 tracking-tighter">{s.value}</div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-1">{s.label}</div>
+                </div>
               ))}
             </div>
-          </div>
-        )}
+        </div>
 
-        {/* Shared table conflicts */}
+        <div className="grid lg:grid-cols-2 gap-10">
+            <div>
+              <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
+                <div className="w-1 h-3 bg-slate-300 rounded-full" />
+                Package Ownership
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {context.packages.map((p, i) => (
+                  <span key={i} className="text-[10px] font-mono font-bold px-2 py-1 rounded border bg-slate-50 text-slate-500 border-slate-200" title={p}>
+                    {p.split('.').slice(-2).join('.')}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {context.entities.length > 0 && (
+              <div>
+                <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
+                  <div className="w-1 h-3 bg-slate-300 rounded-full" />
+                  Domain Entities
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {context.entities.map((e, i) => (
+                    <span key={i} className="text-[10px] font-mono font-bold px-2 py-1 rounded border bg-white text-slate-600 border-slate-200">
+                      {e}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+        </div>
+
         {context.sharedTableConflicts.length > 0 && (
-          <div className="rounded-xl p-3" style={{ background: 'hsl(0 80% 97%)', border: '1px solid hsl(0 60% 85%)' }}>
-            <h4 className="text-[11px] font-bold uppercase tracking-wider mb-1.5" style={{ color: 'hsl(0 65% 40%)' }}>
-              ⚠️ Shared Table Conflicts
+          <div className="rounded-xl p-5 border border-rose-100 bg-rose-50/30">
+            <h4 className="text-[11px] font-bold uppercase tracking-widest text-rose-600 mb-3 flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+              Shared Table Convergence Risk
             </h4>
-            <ul className="text-xs space-y-0.5" style={{ color: 'hsl(0 55% 40%)' }}>
-              {context.sharedTableConflicts.map((c, i) => <li key={i}>• {c}</li>)}
+            <ul className="grid sm:grid-cols-2 gap-2">
+              {context.sharedTableConflicts.map((c, i) => (
+                  <li key={i} className="text-xs font-bold text-rose-700 font-mono">
+                    <span className="opacity-50">#</span> {c}
+                  </li>
+              ))}
             </ul>
           </div>
         )}
 
-        {/* Module Structure — always visible */}
-        {context.proposedModuleStructure ? (
-          <div>
-            <h4 className="text-[11px] font-bold uppercase tracking-wider mb-3" style={{ color: 'hsl(230 15% 50%)' }}>
-              Proposed Module Structure
+        <div className="pt-2">
+            <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-6 flex items-center gap-2">
+              <div className="w-1 h-3 bg-slate-300 rounded-full" />
+              Structural Implementation Blueprint
             </h4>
-            <ModuleStructureView structure={context.proposedModuleStructure} />
-          </div>
-        ) : (
-          <div className="rounded-xl p-4 text-sm text-center" style={{ background: 'hsl(230 20% 96%)', color: 'hsl(230 15% 55%)' }}>
-            Module structure not generated (static analysis mode).
-          </div>
-        )}
+            {context.proposedModuleStructure ? (
+              <ModuleStructureView structure={context.proposedModuleStructure} />
+            ) : (
+              <div className="rounded-2xl p-8 text-center border-2 border-dashed border-slate-100 bg-slate-50/30">
+                <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                  Blueprint not generated (Static Mode active)
+                </p>
+              </div>
+            )}
+        </div>
       </div>
     </div>
   );
@@ -203,140 +222,134 @@ export function ReportView({ plan, onNewAnalysis }: { plan: DecompositionPlan; o
 
   const tabs = [
     { id: 'services' as const, label: `Services (${plan.boundedContexts.length})` },
-    { id: 'roadmap'  as const, label: `Roadmap` },
-    { id: 'risks'    as const, label: `Risks (${plan.transactionalRisks.length})` },
+    { id: 'roadmap'  as const, label: `Extraction Roadmap` },
+    { id: 'risks'    as const, label: `Domain Risks (${plan.transactionalRisks.length})` },
   ];
 
   return (
-    <div className="min-h-screen pb-20" style={{ background: 'hsl(230 30% 96%)' }}>
+    <div className="min-h-screen pb-20 bg-slate-50/50">
       {/* Top Bar */}
-      <div className="sticky top-0 z-20 border-b px-6 py-3 flex items-center justify-between gap-4"
-           style={{ background: 'white', borderColor: 'hsl(230 20% 88%)' }}>
-        <div className="flex items-center gap-2.5">
-          <div className="w-6 h-6 rounded flex items-center justify-center" style={{ background: 'hsl(244 80% 60%)' }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+      <div className="sticky top-0 z-20 border-b px-8 py-4 flex items-center justify-between gap-6 bg-white shadow-sm"
+           style={{ borderColor: 'hsl(214 20% 90%)' }}>
+        <div className="flex items-center gap-4">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-slate-900 border shadow-lg border-slate-800">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
             </svg>
           </div>
-          <span className="font-bold text-sm">Micromorph</span>
-          <span className="text-xs px-2 py-0.5 rounded" style={{ background: 'hsl(140 55% 92%)', color: 'hsl(140 55% 30%)' }}>
-            Analysis Complete
-          </span>
+          <div className="space-y-0.5">
+              <h1 className="font-bold text-sm tracking-tight text-slate-900 leading-none">MicroMorph</h1>
+              <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">
+                    Verification Complete
+                  </span>
+                  <div className="w-1 h-1 rounded-full bg-slate-300" />
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    v1.0.4
+                  </span>
+              </div>
+          </div>
         </div>
 
-        {/* Summary pills */}
-        <div className="hidden sm:flex items-center gap-3 text-xs" style={{ color: 'hsl(230 15% 50%)' }}>
-          <span><b style={{ color: 'hsl(230 25% 15%)' }}>{plan.dependencyGraph.length}</b> classes</span>
-          <span>·</span>
-          <span><b style={{ color: 'hsl(230 25% 15%)' }}>{plan.boundedContexts.length}</b> services</span>
-          <span>·</span>
-          <span><b style={{ color: 'hsl(0 65% 45%)' }}>{plan.transactionalRisks.length}</b> risks</span>
+        <div className="hidden lg:flex items-center gap-6">
+            <div className="flex items-center gap-3">
+                <div className="text-right">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">System Size</div>
+                    <div className="text-xs font-bold text-slate-900">{plan.dependencyGraph.length} Components</div>
+                </div>
+                <div className="w-[1px] h-6 bg-slate-200" />
+                <div className="text-right">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Targets</div>
+                    <div className="text-xs font-bold text-slate-900">{plan.boundedContexts.length} Services</div>
+                </div>
+                <div className="w-[1px] h-6 bg-slate-200" />
+                <div className="text-right">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Risk Level</div>
+                    <div className="text-xs font-bold text-amber-600">{plan.transactionalRisks.length} Detected</div>
+                </div>
+            </div>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex items-center gap-3">
           {onNewAnalysis && (
             <button onClick={onNewAnalysis}
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
-              style={{ background: 'hsl(230 20% 95%)', color: 'hsl(230 15% 40%)', border: '1px solid hsl(230 20% 87%)' }}>
-              New Analysis
+              className="text-[11px] font-bold uppercase tracking-widest px-4 py-2 rounded-xl transition-all border border-slate-200 bg-white text-slate-500 hover:bg-slate-50">
+              New Instance
             </button>
           )}
+          <div className="w-[1px] h-6 bg-slate-200 mx-1" />
           <button onClick={handleExportJson}
-            className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
-            style={{ background: 'hsl(230 20% 95%)', color: 'hsl(230 15% 40%)', border: '1px solid hsl(230 20% 87%)' }}>
-            Export JSON
+            className="text-[11px] font-bold uppercase tracking-widest px-4 py-2 rounded-xl transition-all border border-slate-200 bg-white text-slate-500 hover:bg-slate-50">
+            JSON
           </button>
           <button onClick={handleExportPdf}
-            className="text-xs font-bold px-3 py-1.5 rounded-lg text-white transition-opacity hover:opacity-90"
-            style={{ background: 'linear-gradient(135deg, hsl(244 75% 62%), hsl(220 75% 68%))' }}>
-            Download PDF
+            className="text-[11px] font-bold uppercase tracking-widest px-5 py-2.5 rounded-xl transition-all bg-slate-900 text-white shadow-md hover:bg-slate-800">
+            Export Report
           </button>
         </div>
       </div>
 
-      {/* Tab bar */}
-      <div className="px-6 pt-4 pb-0 flex gap-1">
-        {tabs.map(tab => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-            className="px-4 py-2 rounded-t-xl text-sm font-semibold transition-all"
-            style={activeTab === tab.id ? {
-              background: 'white',
-              color: 'hsl(244 70% 55%)',
-              border: '1px solid hsl(230 20% 88%)',
-              borderBottom: '1px solid white',
-              marginBottom: '-1px'
-            } : {
-              color: 'hsl(230 15% 50%)'
-            }}>
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <div className="max-w-[1400px] mx-auto px-8">
+          {/* Tab bar */}
+          <div className="mt-8 flex gap-1 border-b" style={{ borderColor: 'hsl(214 20% 90%)' }}>
+            {tabs.map(tab => (
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                className="px-6 py-3 text-[11px] font-bold uppercase tracking-widest transition-all relative"
+                style={{
+                  color: activeTab === tab.id ? 'hsl(222 25% 15%)' : 'hsl(215 15% 60%)',
+                }}>
+                {tab.label}
+                {activeTab === tab.id && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-900 rounded-full" />
+                )}
+              </button>
+            ))}
+          </div>
 
-      {/* Content */}
-      <div ref={reportRef} className="px-6 pt-4 pb-10">
-        {activeTab === 'services' && (
-          <div className="flex gap-5">
-            {/* Sidebar nav */}
-            <div className="w-52 shrink-0 hidden md:block">
-              <ServiceNav contexts={plan.boundedContexts} activeIdx={activeService} onSelect={setActiveService} />
-            </div>
+          <div ref={reportRef} className="py-8">
+            {activeTab === 'services' && (
+              <div className="grid md:grid-cols-[260px_1fr] gap-8">
+                <div className="space-y-6">
+                  <ServiceNav contexts={plan.boundedContexts} activeIdx={activeService} onSelect={setActiveService} />
+                </div>
 
-            {/* Main content — one service at a time */}
-            <div className="flex-1 min-w-0 space-y-3">
-              {/* Mobile pill nav */}
-              <div className="flex gap-2 overflow-x-auto pb-1 md:hidden">
-                {plan.boundedContexts.map((ctx, i) => (
-                  <button key={i} onClick={() => setActiveService(i)}
-                    className="text-xs font-semibold px-3 py-1.5 rounded-full shrink-0 whitespace-nowrap"
-                    style={activeService === i ? {
-                      background: 'hsl(244 80% 60%)', color: 'white'
-                    } : {
-                      background: 'white', color: 'hsl(230 15% 45%)', border: '1px solid hsl(230 20% 87%)'
-                    }}>
-                    {ctx.suggestedServiceName}
-                  </button>
-                ))}
+                <div className="space-y-4">
+                  <ServiceDetail
+                    context={plan.boundedContexts[activeService]}
+                    index={activeService}
+                    total={plan.boundedContexts.length}
+                  />
+
+                  <div className="flex justify-between items-center py-4 px-2">
+                    <button
+                      disabled={activeService === 0}
+                      onClick={() => setActiveService(i => i - 1)}
+                      className="text-[10px] font-bold uppercase tracking-widest px-6 py-3 rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-30">
+                      ← Sequence Previous
+                    </button>
+                    <button
+                      disabled={activeService === plan.boundedContexts.length - 1}
+                      onClick={() => setActiveService(i => i + 1)}
+                      className="text-[10px] font-bold uppercase tracking-widest px-6 py-3 rounded-xl bg-slate-900 text-white shadow-sm hover:bg-slate-800 disabled:opacity-30">
+                      Sequence Next →
+                    </button>
+                  </div>
+                </div>
               </div>
+            )}
 
-              <ServiceDetail
-                context={plan.boundedContexts[activeService]}
-                index={activeService}
-                total={plan.boundedContexts.length}
-              />
-
-              {/* Prev / Next buttons */}
-              <div className="flex justify-between pt-2">
-                <button
-                  disabled={activeService === 0}
-                  onClick={() => setActiveService(i => i - 1)}
-                  className="text-sm font-semibold px-4 py-2 rounded-xl transition-all disabled:opacity-30"
-                  style={{ background: 'white', border: '1px solid hsl(230 20% 87%)', color: 'hsl(230 15% 40%)' }}>
-                  ← Previous
-                </button>
-                <button
-                  disabled={activeService === plan.boundedContexts.length - 1}
-                  onClick={() => setActiveService(i => i + 1)}
-                  className="text-sm font-semibold px-4 py-2 rounded-xl transition-all disabled:opacity-30"
-                  style={{ background: 'hsl(244 80% 60%)', color: 'white' }}>
-                  Next →
-                </button>
+            {activeTab === 'roadmap' && (
+              <div className="max-w-4xl mx-auto">
+                <ExtractionRoadmap steps={plan.extractionRoadmap} />
               </div>
-            </div>
-          </div>
-        )}
+            )}
 
-        {activeTab === 'roadmap' && (
-          <div className="max-w-3xl">
-            <ExtractionRoadmap steps={plan.extractionRoadmap} />
+            {activeTab === 'risks' && (
+              <div className="max-w-4xl mx-auto">
+                <TransactionalRiskPanel risks={plan.transactionalRisks} />
+              </div>
+            )}
           </div>
-        )}
-
-        {activeTab === 'risks' && (
-          <div className="max-w-3xl">
-            <TransactionalRiskPanel risks={plan.transactionalRisks} />
-          </div>
-        )}
       </div>
     </div>
   );

@@ -109,43 +109,39 @@ export function OnboardingForm({ onSubmit }: { onSubmit?: () => void } = {}) {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: 'hsl(230 30% 96%)' }}>
+    <div className="min-h-screen" style={{ background: 'white' }}>
       {/* Header */}
-      <header className="flex items-center justify-between px-8 py-5">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'hsl(244 80% 60%)' }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <header className="flex items-center justify-between px-8 py-6 max-w-7xl mx-auto">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center shadow-sm" style={{ background: 'hsl(222 25% 15%)' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" />
             </svg>
           </div>
-          <span className="font-bold text-[15px] tracking-tight">Micromorph</span>
+          <span className="font-bold text-[17px] tracking-tight" style={{ color: 'hsl(222 25% 15%)' }}>Micromorph</span>
         </div>
-        <span className="text-xs font-medium px-2.5 py-1 rounded-full border" style={{ color: 'hsl(244 60% 55%)', borderColor: 'hsl(244 60% 80%)', background: 'hsl(244 80% 97%)' }}>
-          v1.0.0-beta
+        <span className="text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full border" style={{ color: 'hsl(215 15% 45%)', borderColor: 'hsl(214 20% 90%)', background: 'hsl(210 20% 98%)' }}>
+          Beta v1.0
         </span>
       </header>
 
       {/* Hero */}
-      <div className="text-center pt-12 pb-10 px-4">
-        <h1 className="text-5xl font-black tracking-tight leading-tight max-w-xl mx-auto"
-          style={{ color: 'hsl(230 30% 12%)' }}>
-          Transform your{' '}
-          <span style={{ background: 'linear-gradient(135deg, hsl(244 80% 60%), hsl(220 80% 70%))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            Monolith
-          </span>
-          <br />into Microservices.
+      <div className="text-center pt-16 pb-12 px-4 max-w-3xl mx-auto">
+        <h1 className="text-5xl font-extrabold tracking-tight leading-[1.1]"
+          style={{ color: 'hsl(222 25% 15%)' }}>
+          Transform your Monolith into Microservices.
         </h1>
-        <p className="mt-4 text-base max-w-md mx-auto leading-relaxed" style={{ color: 'hsl(230 15% 45%)' }}>
-          Drop a link to your legacy Java Spring repository. Our engine will analyze the codebase,
-          map out domains, and generate a modernized architecture blueprint in seconds.
+        <p className="mt-5 text-lg leading-relaxed max-w-xl mx-auto" style={{ color: 'hsl(215 15% 45%)' }}>
+          Decompose legacy Java Spring applications into modernized, 
+          independent domain services with semantic analysis.
         </p>
       </div>
 
       {/* Card */}
       <form onSubmit={handleSubmit}
-        className="mx-auto max-w-lg rounded-2xl shadow-xl overflow-hidden"
-        style={{ background: 'white', border: '1px solid hsl(230 20% 90%)' }}>
-        <div className="p-8 space-y-7">
+        className="mx-auto max-w-lg rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden"
+        style={{ background: 'white', border: '1px solid hsl(214 20% 90%)' }}>
+        <div className="p-10 space-y-8">
 
           {/* Repos */}
           <div className="space-y-3" style={analysisMode === 'demo' ? { opacity: 0.7, pointerEvents: 'none' } : {}}>
@@ -209,74 +205,68 @@ export function OnboardingForm({ onSubmit }: { onSubmit?: () => void } = {}) {
           </div>
 
           {/* Granularity */}
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <label className="text-[11px] font-bold uppercase tracking-widest flex items-center gap-1.5" style={{ color: 'hsl(230 20% 50%)' }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></svg>
-                Decomposition Granularity
+              <label className="text-[11px] font-bold uppercase tracking-widest flex items-center gap-2" style={{ color: 'hsl(215 15% 45%)' }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></svg>
+                Service Granularity
               </label>
-              <span className="text-xs font-medium" style={{ color: 'hsl(230 15% 55%)' }}>
-                {GRANULARITY_OPTIONS.find(g => g.value === granularity)?.hint}
-              </span>
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-3">
               {GRANULARITY_OPTIONS.map(opt => (
                 <button key={opt.value} type="button" onClick={() => setGranularity(opt.value)}
-                  className="rounded-xl py-3 px-3 text-center transition-all border"
+                  className="rounded-xl py-3.5 px-3 text-center transition-all border outline-none"
                   style={granularity === opt.value ? {
-                    background: 'hsl(244 80% 96%)',
-                    borderColor: 'hsl(244 80% 65%)',
-                    color: 'hsl(244 80% 50%)'
+                    background: 'hsl(222 25% 15%)',
+                    borderColor: 'hsl(222 25% 15%)',
+                    color: 'white'
                   } : {
-                    background: 'hsl(230 30% 98%)',
-                    borderColor: 'hsl(230 20% 88%)',
-                    color: 'hsl(230 15% 40%)'
+                    background: 'white',
+                    borderColor: 'hsl(214 20% 90%)',
+                    color: 'hsl(215 15% 45%)'
                   }}>
-                  <div className="font-bold text-sm">{opt.label}</div>
-                  <div className="text-[11px] mt-0.5 opacity-70">{opt.sub}</div>
+                  <div className="font-bold text-xs">{opt.label}</div>
+                  <div className="text-[10px] mt-0.5 opacity-70 uppercase tracking-tighter">{opt.sub}</div>
                 </button>
               ))}
             </div>
-            <p className="text-[11px]" style={{ color: 'hsl(230 15% 58%)' }}>
-              Controls how aggressively related packages are grouped into a single service.
-            </p>
           </div>
 
           {/* Analysis Engine */}
-          <div className="space-y-3">
-            <label className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'hsl(230 20% 50%)' }}>
-              Analysis Engine
+          <div className="space-y-4">
+            <label className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'hsl(215 15% 45%)' }}>
+              Analysis Strategy
             </label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {([
                 {
-                  value: 'ai' as AnalysisMode, label: 'AI Analysis', sub: 'Deep Semantic',
+                  value: 'ai' as AnalysisMode, label: 'AI Deep', sub: 'Semantic',
                   icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a4 4 0 0 1 4 4 4 4 0 0 1-4 4 4 4 0 0 1-4-4 4 4 0 0 1 4-4" /><path d="M6 20v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" /></svg>
                 },
                 {
-                  value: 'static' as AnalysisMode, label: 'Static Analysis', sub: 'Fast AST',
+                  value: 'static' as AnalysisMode, label: 'Static', sub: 'AST-Only',
                   icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
                 },
                 {
-                  value: 'demo' as AnalysisMode, label: 'Demo Mode', sub: 'Interactive Walkthrough',
+                  value: 'demo' as AnalysisMode, label: 'Demo', sub: 'Sandbox',
                   icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polygon points="10 8 16 12 10 16 10 8" /></svg>
                 }
               ]).map(opt => (
                 <button key={opt.value} type="button" onClick={() => setAnalysisMode(opt.value)}
-                  className="rounded-xl py-3 px-4 text-left flex items-center gap-2.5 transition-all border"
+                  className="rounded-xl py-3 px-4 text-left flex flex-col gap-1.5 transition-all border outline-none"
                   style={analysisMode === opt.value ? {
-                    background: 'hsl(244 80% 96%)',
-                    borderColor: 'hsl(244 80% 65%)',
-                    color: 'hsl(244 80% 50%)'
+                    background: 'hsl(222 25% 15%)',
+                    borderColor: 'hsl(222 25% 15%)',
+                    color: 'white'
                   } : {
-                    background: 'hsl(230 30% 98%)',
-                    borderColor: 'hsl(230 20% 88%)',
-                    color: 'hsl(230 15% 40%)'
+                    background: 'white',
+                    borderColor: 'hsl(214 20% 90%)',
+                    color: 'hsl(215 15% 45%)'
                   }}>
                   {opt.icon}
                   <div>
-                    <div className="font-semibold text-sm">{opt.label}</div>
-                    <div className="text-[11px] opacity-70">{opt.sub}</div>
+                    <div className="font-bold text-[10px] uppercase tracking-wider">{opt.label}</div>
+                    <div className="text-[9px] opacity-70 font-medium">{opt.sub}</div>
                   </div>
                 </button>
               ))}
@@ -286,35 +276,33 @@ export function OnboardingForm({ onSubmit }: { onSubmit?: () => void } = {}) {
           {/* Advanced (LLM config) */}
           {analysisMode === 'ai' && (
             <div className="space-y-3">
-              <div className="rounded-xl p-4 space-y-4" style={{ background: 'hsl(230 30% 97%)', border: '1px solid hsl(230 20% 90%)' }}>
-                <div className="space-y-3">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold uppercase tracking-wider pl-1" style={{ color: 'hsl(230 20% 50%)' }}>OpenRouter API Key</label>
-                    <input type="password" className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-                      style={{ border: '1.5px solid hsl(230 20% 85%)', fontFamily: 'monospace' }}
+              <div className="rounded-xl p-5 space-y-5" style={{ background: 'hsl(210 20% 98%)', border: '1px solid hsl(214 20% 90%)' }}>
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-widest pl-1" style={{ color: 'hsl(215 15% 45%)' }}>OpenRouter API Key</label>
+                    <input type="password" className="w-full rounded-xl px-4 py-2.5 text-sm outline-none shadow-sm transition-all focus:ring-1 focus:ring-slate-400"
+                      style={{ border: '1px solid hsl(214 20% 88%)', fontFamily: 'monospace' }}
                       placeholder="sk-or-v1-..." value={openRouterKey} onChange={e => setOpenRouterKey(e.target.value)} />
                   </div>
                   
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     <div className="flex items-center justify-between pl-1">
-                      <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'hsl(230 20% 50%)' }}>Model Selection</label>
-                      <button type="button" onClick={fetchModels} className="text-[10px] font-bold uppercase tracking-wider hover:opacity-70" style={{ color: 'hsl(244 80% 60%)' }}>
-                        {loadingModels ? 'Loading...' : 'Refresh'}
+                      <label className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'hsl(215 15% 45%)' }}>Language Model</label>
+                      <button type="button" onClick={fetchModels} className="text-[9px] font-bold uppercase tracking-widest text-slate-500 hover:text-slate-900 transition-colors">
+                        {loadingModels ? 'Updating...' : 'Refresh List'}
                       </button>
                     </div>
                     <select
-                      className="w-full rounded-lg px-3 py-2 text-sm outline-none appearance-none"
-                      style={{ border: '1.5px solid hsl(230 20% 85%)', background: 'white url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 fill=%27none%27 viewBox=%270 0 24 24%27 stroke=%27%236b7280%27%3E%3Cpath stroke-linecap=%27round%27 stroke-linejoin=%27round%27 stroke-width=%272%27 d=%27M19 9l-7 7-7-7%27/%3E%3C/svg%3E") no-repeat right 0.75rem center/1rem' }}
+                      className="w-full rounded-xl px-4 py-2.5 text-sm outline-none appearance-none shadow-sm bg-white"
+                      style={{ border: '1px solid hsl(214 20% 88%)', background: 'white url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 fill=%27none%27 viewBox=%270 0 24 24%27 stroke=%27%2364748b%27%3E%3Cpath stroke-linecap=%27round%27 stroke-linejoin=%27round%27 stroke-width=%272%27 d=%27M19 9l-7 7-7-7%27/%3E%3C/svg%3E") no-repeat right 0.75rem center/1rem' }}
                       value={openRouterModel}
                       onChange={e => setOpenRouterModel(e.target.value)}
                     >
                       {orModels.length > 0 ? (
                         orModels.map(m => {
-                          const inputCost = (parseFloat(m.pricing.prompt) * 1000000).toFixed(2);
-                          const outputCost = (parseFloat(m.pricing.completion) * 1000000).toFixed(2);
                           return (
                             <option key={m.id} value={m.id}>
-                              {m.name} (${inputCost}/${outputCost} per 1M tokens)
+                              {m.name}
                             </option>
                           );
                         })
@@ -335,12 +323,12 @@ export function OnboardingForm({ onSubmit }: { onSubmit?: () => void } = {}) {
         </div>
 
         {/* Submit */}
-        <div className="px-8 pb-8">
+        <div className="px-10 pb-10">
           <button type="submit"
-            className="w-full py-4 rounded-xl text-white text-sm font-bold tracking-wide flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-[0.99]"
-            style={{ background: 'linear-gradient(135deg, hsl(244 75% 62%), hsl(220 75% 68%))', boxShadow: '0 4px 20px hsl(244 80% 60% / 35%)' }}>
+            className="w-full py-4 rounded-xl text-white text-sm font-bold tracking-widest uppercase flex items-center justify-center gap-2.5 transition-all hover:bg-slate-800 active:scale-[0.98] shadow-lg shadow-slate-200"
+            style={{ background: 'hsl(222 25% 15%)' }}>
             Morph to Microservices
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="9 18 15 12 9 6" />
             </svg>
           </button>

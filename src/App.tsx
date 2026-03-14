@@ -57,42 +57,43 @@ function App() {
   if (errorMessage) {
     const isAuthError = errorMessage.includes('401') || errorMessage.includes('authentication') || errorMessage.includes('api-key');
     return (
-      <div className="min-h-screen flex items-center justify-center p-6" style={{ background: 'hsl(230 30% 96%)' }}>
-        <div className="max-w-lg w-full rounded-2xl overflow-hidden shadow-xl" style={{ background: 'white', border: '1px solid hsl(230 20% 88%)' }}>
-          <div className="p-6 border-b" style={{ background: 'hsl(0 80% 97%)', borderColor: 'hsl(0 50% 88%)' }}>
-            <div className="text-3xl mb-2">⚠️</div>
-            <h2 className="text-xl font-bold" style={{ color: 'hsl(0 65% 35%)' }}>Analysis Failed</h2>
+      <div className="min-h-screen flex items-center justify-center p-8 bg-slate-50/50">
+        <div className="max-w-lg w-full rounded-2xl overflow-hidden shadow-2xl bg-white border" style={{ borderColor: 'hsl(214 20% 90%)' }}>
+          <div className="p-8 border-b bg-rose-50/30" style={{ borderColor: 'hsl(0 100% 96%)' }}>
+            <div className="w-12 h-12 bg-rose-500 rounded-xl flex items-center justify-center mb-4 shadow-lg shadow-rose-200">
+                <span className="text-white text-xl">⚠</span>
+            </div>
+            <h2 className="text-2xl font-bold tracking-tighter text-slate-900">Analysis Integration Failed</h2>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">Orchestration Error Context</p>
           </div>
-          <div className="p-6 space-y-4">
-            <p className="text-sm font-mono p-3 rounded-lg leading-relaxed break-words"
-              style={{ background: 'hsl(230 20% 96%)', color: 'hsl(0 60% 40%)', border: '1px solid hsl(230 20% 88%)' }}>
-              {errorMessage}
-            </p>
+          <div className="p-8 space-y-6">
+            <div className="rounded-xl p-5 border bg-slate-50 border-slate-200">
+                <p className="text-[11px] font-mono font-bold leading-relaxed break-words text-rose-600">
+                  {errorMessage}
+                </p>
+            </div>
             {isAuthError && (
-              <div className="rounded-xl p-4 text-sm" style={{ background: 'hsl(40 90% 96%)', border: '1px solid hsl(40 70% 82%)' }}>
-                <p className="font-semibold mb-1" style={{ color: 'hsl(38 80% 35%)' }}>Invalid API Key</p>
-                <p style={{ color: 'hsl(38 60% 45%)' }}>
-                  Click "Edit Configuration" to update your API key. Your GitHub token and repo URL will be preserved.
+              <div className="rounded-xl p-4 border border-amber-100 bg-amber-50/50">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700 mb-1">Authorization Missing</p>
+                <p className="text-xs text-amber-800 font-medium leading-relaxed">
+                  The API handshake failed. Update your provider credentials in the configuration panel to proceed.
                 </p>
               </div>
             )}
             <div className="flex gap-3 pt-2">
               <button onClick={handleEditConfig}
-                className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white"
-                style={{ background: 'linear-gradient(135deg, hsl(244 75% 62%), hsl(220 75% 68%))' }}>
-                Edit Configuration
+                className="flex-1 py-3 rounded-xl text-[11px] font-bold uppercase tracking-widest bg-slate-900 text-white shadow-md hover:bg-slate-800 transition-all">
+                Update Configuration
               </button>
               <button onClick={handleRetry}
-                className="py-2.5 px-4 rounded-xl text-sm font-semibold"
-                style={{ background: 'hsl(230 20% 95%)', color: 'hsl(230 15% 40%)', border: '1px solid hsl(230 20% 87%)' }}>
+                className="px-6 py-3 rounded-xl text-[11px] font-bold uppercase tracking-widest border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 transition-all">
                 Retry
               </button>
-              <button onClick={fullReset}
-                className="py-2.5 px-4 rounded-xl text-sm font-semibold"
-                style={{ color: 'hsl(0 65% 50%)' }}>
-                Reset
-              </button>
             </div>
+            <button onClick={fullReset}
+              className="w-full text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-rose-500 transition-colors">
+              Reset Session Data
+            </button>
           </div>
         </div>
       </div>

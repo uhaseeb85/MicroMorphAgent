@@ -32,14 +32,14 @@ export function AnalysisDashboard({ onEditConfig, onCancel }: AnalysisDashboardP
     const isPhase5 = phase === 5;
 
     return (
-        <div className="min-h-screen p-6" style={{ background: 'hsl(230 30% 96%)' }}>
+        <div className="min-h-screen" style={{ background: 'hsl(210 20% 98%)' }}>
             {/* Header */}
-            <header className="max-w-6xl mx-auto mb-6">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+            <header className="border-b bg-white">
+                <div className="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
                         <div
-                            className="w-10 h-10 rounded-xl flex items-center justify-center"
-                            style={{ background: 'linear-gradient(135deg, hsl(244 75% 62%), hsl(220 75% 68%))' }}
+                            className="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm"
+                            style={{ background: 'hsl(222 25% 15%)' }}
                         >
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <polyline points="16 18 22 12 16 6" />
@@ -47,36 +47,39 @@ export function AnalysisDashboard({ onEditConfig, onCancel }: AnalysisDashboardP
                             </svg>
                         </div>
                         <div>
-                            <h1 className="text-xl font-black tracking-tight" style={{ color: 'hsl(230 25% 12%)' }}>
+                            <h1 className="text-lg font-bold tracking-tight" style={{ color: 'hsl(222 25% 15%)' }}>
                                 Micromorph
                             </h1>
-                            <p className="text-xs" style={{ color: 'hsl(230 15% 50%)' }}>
-                                Microservice Analysis Engine
-                            </p>
+                            <div className="flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'hsl(215 15% 45%)' }}>
+                                    Live Analysis Engine
+                                </span>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                         <button
                             onClick={onEditConfig}
-                            className="text-xs font-semibold px-4 py-2 rounded-xl transition-all hover:opacity-80"
-                            style={{ background: 'white', color: 'hsl(230 15% 40%)', border: '1px solid hsl(230 20% 87%)' }}
+                            className="text-xs font-bold uppercase tracking-widest px-5 py-2.5 rounded-xl transition-all hover:bg-slate-50 border shadow-sm"
+                            style={{ background: 'white', color: 'hsl(222 25% 15%)', borderColor: 'hsl(214 20% 90%)' }}
                         >
                             Edit Config
                         </button>
                         <button
                             onClick={onCancel}
-                            className="text-xs font-semibold px-4 py-2 rounded-xl transition-all hover:opacity-80"
-                            style={{ color: 'hsl(0 65% 50%)' }}
+                            className="text-xs font-bold uppercase tracking-widest px-5 py-2.5 rounded-xl transition-all hover:bg-red-50"
+                            style={{ color: 'hsl(0 80% 60%)' }}
                         >
-                            Cancel
+                            Stop
                         </button>
                     </div>
                 </div>
             </header>
 
             {/* Main Content */}
-            <main className="max-w-6xl mx-auto space-y-6">
+            <main className="max-w-6xl mx-auto p-6 space-y-8">
                 {/* Progress Bar Section */}
                 <ProgressBar phase={phase} progressMessage={progressMessage} />
 
@@ -165,25 +168,21 @@ export function AnalysisDashboard({ onEditConfig, onCancel }: AnalysisDashboardP
                         className="rounded-2xl p-5"
                         style={{ background: 'white', border: '1px solid hsl(230 20% 88%)' }}
                     >
-                        <div className="flex items-center gap-2 mb-3">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'hsl(244 70% 55%)' }}>
-                                <circle cx="12" cy="12" r="10" />
-                                <line x1="12" y1="16" x2="12" y2="12" />
-                                <line x1="12" y1="8" x2="12.01" y2="8" />
-                            </svg>
-                            <span className="text-xs font-bold uppercase tracking-wider" style={{ color: 'hsl(230 15% 45%)' }}>
+                        <div className="flex items-center gap-2 mb-4">
+                            <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'hsl(222 25% 15%)' }} />
+                            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'hsl(215 15% 45%)' }}>
                                 Current Operation
                             </span>
                         </div>
 
-                        <div className="space-y-2">
+                        <div className="space-y-4">
                             {progressMessage && (
-                                <div className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'hsl(244 80% 97%)', border: '1px solid hsl(244 70% 90%)' }}>
+                                <div className="flex items-center gap-4 p-4 rounded-xl border bg-slate-50/50" style={{ borderColor: 'hsl(214 20% 90%)' }}>
                                     <div
-                                        className="w-2 h-2 rounded-full animate-pulse"
-                                        style={{ background: 'hsl(244 75% 62%)' }}
+                                        className="w-2 h-2 rounded-full animate-ping"
+                                        style={{ background: 'hsl(222 25% 15%)' }}
                                     />
-                                    <span className="text-sm font-medium" style={{ color: 'hsl(244 70% 45%)' }}>
+                                    <span className="text-sm font-semibold tracking-tight" style={{ color: 'hsl(222 25% 15%)' }}>
                                         {progressMessage}
                                     </span>
                                 </div>
