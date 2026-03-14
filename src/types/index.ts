@@ -2,11 +2,8 @@
 export interface AnalysisConfig {
   repos: RepoInput[];
   githubToken: string;
-  anthropicApiKey?: string;
   openRouterApiKey?: string;
-  openAiApiKey?: string;
-  lmStudioUrl?: string;
-  llmProvider: 'anthropic' | 'openrouter' | 'lmstudio' | 'openai';
+  llmProvider: 'openrouter';
   options: AnalysisOptions;
 }
 

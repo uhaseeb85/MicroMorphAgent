@@ -10,7 +10,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.78.0",
     "@octokit/rest": "^22.0.1",
     "@tailwindcss/vite": "^4.2.1",
     "autoprefixer": "^10.4.27",

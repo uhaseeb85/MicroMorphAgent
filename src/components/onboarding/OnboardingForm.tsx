@@ -21,7 +21,7 @@ function loadSaved() {
 
 type Granularity = 'coarse' | 'balanced' | 'fine';
 type AnalysisMode = 'ai' | 'static';
-type LLMProvider = 'anthropic' | 'openrouter' | 'lmstudio' | 'openai';
+type LLMProvider = 'openrouter';
 
 const GRANULARITY_OPTIONS: { value: Granularity; label: string; sub: string; hint: string }[] = [
   { value: 'coarse', label: 'Coarse', sub: 'Broad groupings', hint: '2–4 services' },
@@ -34,28 +34,22 @@ export function OnboardingForm({ onSubmit }: { onSubmit?: () => void } = {}) {
   const saved = loadSaved();
 
   const [githubToken, setGithubToken] = useState(saved?.githubToken || '');
-  const [llmProvider, setLlmProvider] = useState<LLMProvider>(saved?.llmProvider || 'openrouter');
-  const [anthropicKey, setAnthropicKey] = useState(saved?.anthropicApiKey || '');
+  const [llmProvider] = useState<LLMProvider>('openrouter');
   const [openRouterKey, setOpenRouterKey] = useState(saved?.openRouterApiKey || '');
-  const [openAiKey, setOpenAiKey] = useState(saved?.openAiApiKey || '');
-  const [openRouterModel, setOpenRouterModel] = useState(saved?.options?.llmModel && saved?.llmProvider === 'openrouter' ? saved.options.llmModel : 'anthropic/claude-3.7-sonnet');
-  const [lmStudioUrl, setLmStudioUrl] = useState(saved?.lmStudioUrl || 'http://localhost:1234/v1');
+  const [openRouterModel, setOpenRouterModel] = useState(saved?.options?.llmModel || 'anthropic/claude-3.7-sonnet');
   const [repos, setRepos] = useState<RepoInput[]>(saved?.repos?.length ? saved.repos : [{ url: '', role: 'primary' }]);
   const [granularity, setGranularity] = useState<Granularity>(saved?.options?.granularity || 'balanced');
   const [analysisMode, setAnalysisMode] = useState<AnalysisMode>(saved?.options?.analysisMode || 'ai');
-  // Auto-show advanced settings if a provider other than default is configured
-  const hasSavedProvider = saved?.llmProvider && saved.llmProvider !== 'openrouter';
-  const hasSavedKey = saved?.openRouterApiKey || saved?.anthropicApiKey || saved?.openAiApiKey;
-  const [showAdvanced, setShowAdvanced] = useState(hasSavedProvider || !!hasSavedKey);
+  
+  // Always show advanced settings for API key configuration in AI mode
+  const [showAdvanced, setShowAdvanced] = useState(true);
 
   const [orModels, setOrModels] = useState<OpenRouterModel[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
 
   useEffect(() => {
-    if (llmProvider === 'openrouter') {
-      fetchModels();
-    }
-  }, [llmProvider]);
+    fetchModels();
+  }, []);
 
   const fetchModels = async () => {
     setLoadingModels(true);
@@ -86,19 +80,13 @@ export function OnboardingForm({ onSubmit }: { onSubmit?: () => void } = {}) {
       return;
     }
     if (analysisMode === 'ai') {
-      if (llmProvider === 'anthropic' && !anthropicKey) { alert('Anthropic API Key is required'); return; }
-      if (llmProvider === 'openrouter' && !openRouterKey) { alert('OpenRouter API Key is required'); return; }
-      if (llmProvider === 'openai' && !openAiKey) { alert('OpenAI API Key is required'); return; }
-      if (llmProvider === 'lmstudio' && !lmStudioUrl) { alert('LM Studio URL is required'); return; }
+      if (!openRouterKey) { alert('OpenRouter API Key is required'); return; }
     }
 
     const config: AnalysisConfig = {
       githubToken,
-      llmProvider,
-      anthropicApiKey: llmProvider === 'anthropic' ? anthropicKey : undefined,
-      openRouterApiKey: llmProvider === 'openrouter' ? openRouterKey : undefined,
-      openAiApiKey: llmProvider === 'openai' ? openAiKey : undefined,
-      lmStudioUrl: llmProvider === 'lmstudio' ? lmStudioUrl : undefined,
+      llmProvider: 'openrouter',
+      openRouterApiKey: openRouterKey,
       repos,
       options: {
         maxCommitHistory: 300,
@@ -106,10 +94,7 @@ export function OnboardingForm({ onSubmit }: { onSubmit?: () => void } = {}) {
         gitCoChangeWindowDays: 90,
         granularity,
         analysisMode,
-        llmModel:
-          llmProvider === 'anthropic' ? 'claude-3-7-sonnet-20250219' :
-            llmProvider === 'openrouter' ? openRouterModel :
-              llmProvider === 'openai' ? 'gpt-4o' : 'local-model'
+        llmModel: openRouterModel
       }
     };
 
@@ -285,85 +270,50 @@ export function OnboardingForm({ onSubmit }: { onSubmit?: () => void } = {}) {
           {/* Advanced (LLM config) */}
           {analysisMode === 'ai' && (
             <div className="space-y-3">
-              <button type="button" onClick={() => setShowAdvanced((v: boolean) => !v)}
-                className="text-xs font-semibold flex items-center gap-1"
-                style={{ color: 'hsl(244 70% 60%)' }}>
-                {showAdvanced ? '▾' : '▸'} LLM Provider Settings
-              </button>
-
-              {showAdvanced && (
-                <div className="rounded-xl p-4 space-y-4" style={{ background: 'hsl(230 30% 97%)', border: '1px solid hsl(230 20% 90%)' }}>
-                  <div className="grid grid-cols-4 gap-1.5">
-                    {(['openrouter', 'anthropic', 'openai', 'lmstudio'] as LLMProvider[]).map(p => (
-                      <button key={p} type="button" onClick={() => setLlmProvider(p)}
-                        className="py-1.5 rounded-lg text-xs font-semibold capitalize transition-all"
-                        style={llmProvider === p ? {
-                          background: 'hsl(244 80% 60%)', color: 'white'
-                        } : {
-                          background: 'white', color: 'hsl(230 15% 45%)', border: '1px solid hsl(230 20% 88%)'
-                        }}>
-                        {p === 'lmstudio' ? 'LM Studio' : p === 'openrouter' ? 'OpenRouter' : p === 'openai' ? 'OpenAI' : 'Anthropic'}
-                      </button>
-                    ))}
+              <div className="rounded-xl p-4 space-y-4" style={{ background: 'hsl(230 30% 97%)', border: '1px solid hsl(230 20% 90%)' }}>
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider pl-1" style={{ color: 'hsl(230 20% 50%)' }}>OpenRouter API Key</label>
+                    <input type="password" className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                      style={{ border: '1.5px solid hsl(230 20% 85%)', fontFamily: 'monospace' }}
+                      placeholder="sk-or-v1-..." value={openRouterKey} onChange={e => setOpenRouterKey(e.target.value)} />
                   </div>
-
-                  {llmProvider === 'anthropic' && (
-                    <input type="password" className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-                      style={{ border: '1.5px solid hsl(230 20% 85%)', fontFamily: 'monospace' }}
-                      placeholder="sk-ant-..." value={anthropicKey} onChange={e => setAnthropicKey(e.target.value)} />
-                  )}
-                  {llmProvider === 'openrouter' && (
-                    <div className="space-y-3">
-                      <input type="password" className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-                        style={{ border: '1.5px solid hsl(230 20% 85%)', fontFamily: 'monospace' }}
-                        placeholder="sk-or-v1-..." value={openRouterKey} onChange={e => setOpenRouterKey(e.target.value)} />
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between pl-1">
-                          <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'hsl(230 20% 50%)' }}>Model</label>
-                          <button type="button" onClick={fetchModels} className="text-[10px] font-bold uppercase tracking-wider hover:opacity-70" style={{ color: 'hsl(244 80% 60%)' }}>
-                            {loadingModels ? 'Loading...' : 'Refresh'}
-                          </button>
-                        </div>
-                        <select
-                          className="w-full rounded-lg px-3 py-2 text-sm outline-none appearance-none"
-                          style={{ border: '1.5px solid hsl(230 20% 85%)', background: 'white url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 fill=%27none%27 viewBox=%270 0 24 24%27 stroke=%27%236b7280%27%3E%3Cpath stroke-linecap=%27round%27 stroke-linejoin=%27round%27 stroke-width=%272%27 d=%27M19 9l-7 7-7-7%27/%3E%3C/svg%3E") no-repeat right 0.75rem center/1rem' }}
-                          value={openRouterModel}
-                          onChange={e => setOpenRouterModel(e.target.value)}
-                        >
-                          {orModels.length > 0 ? (
-                            orModels.map(m => {
-                              const inputCost = (parseFloat(m.pricing.prompt) * 1000000).toFixed(2);
-                              const outputCost = (parseFloat(m.pricing.completion) * 1000000).toFixed(2);
-                              return (
-                                <option key={m.id} value={m.id}>
-                                  {m.name} (${inputCost}/${outputCost} per 1M tokens)
-                                </option>
-                              );
-                            })
-                          ) : (
-                            <>
-                              <option value="anthropic/claude-3.7-sonnet">Claude 3.7 Sonnet</option>
-                              <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
-                              <option value="openai/gpt-4o">GPT-4o</option>
-                              <option value="deepseek/deepseek-chat">DeepSeek V3</option>
-                            </>
-                          )}
-                        </select>
-                      </div>
+                  
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between pl-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'hsl(230 20% 50%)' }}>Model Selection</label>
+                      <button type="button" onClick={fetchModels} className="text-[10px] font-bold uppercase tracking-wider hover:opacity-70" style={{ color: 'hsl(244 80% 60%)' }}>
+                        {loadingModels ? 'Loading...' : 'Refresh'}
+                      </button>
                     </div>
-                  )}
-                  {llmProvider === 'openai' && (
-                    <input type="password" className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-                      style={{ border: '1.5px solid hsl(230 20% 85%)', fontFamily: 'monospace' }}
-                      placeholder="sk-proj-..." value={openAiKey} onChange={e => setOpenAiKey(e.target.value)} />
-                  )}
-                  {llmProvider === 'lmstudio' && (
-                    <input type="url" className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-                      style={{ border: '1.5px solid hsl(230 20% 85%)', fontFamily: 'monospace' }}
-                      placeholder="http://localhost:1234" value={lmStudioUrl} onChange={e => setLmStudioUrl(e.target.value)} />
-                  )}
+                    <select
+                      className="w-full rounded-lg px-3 py-2 text-sm outline-none appearance-none"
+                      style={{ border: '1.5px solid hsl(230 20% 85%)', background: 'white url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 fill=%27none%27 viewBox=%270 0 24 24%27 stroke=%27%236b7280%27%3E%3Cpath stroke-linecap=%27round%27 stroke-linejoin=%27round%27 stroke-width=%272%27 d=%27M19 9l-7 7-7-7%27/%3E%3C/svg%3E") no-repeat right 0.75rem center/1rem' }}
+                      value={openRouterModel}
+                      onChange={e => setOpenRouterModel(e.target.value)}
+                    >
+                      {orModels.length > 0 ? (
+                        orModels.map(m => {
+                          const inputCost = (parseFloat(m.pricing.prompt) * 1000000).toFixed(2);
+                          const outputCost = (parseFloat(m.pricing.completion) * 1000000).toFixed(2);
+                          return (
+                            <option key={m.id} value={m.id}>
+                              {m.name} (${inputCost}/${outputCost} per 1M tokens)
+                            </option>
+                          );
+                        })
+                      ) : (
+                        <>
+                          <option value="anthropic/claude-3.7-sonnet">Claude 3.7 Sonnet</option>
+                          <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+                          <option value="openai/gpt-4o">GPT-4o</option>
+                          <option value="deepseek/deepseek-chat">DeepSeek V3</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
           )}
         </div>

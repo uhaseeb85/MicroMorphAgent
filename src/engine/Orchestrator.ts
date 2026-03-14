@@ -27,9 +27,7 @@ export class Orchestrator {
     console.log('[Orchestrator] Starting analysis with config:', {
       provider: this.config.llmProvider,
       model: this.config.options.llmModel,
-      hasAnthropicKey: !!this.config.anthropicApiKey,
       hasOpenRouterKey: !!this.config.openRouterApiKey,
-      hasOpenAiKey: !!this.config.openAiApiKey,
       repos: this.config.repos.map(r => r.url)
     });
 
