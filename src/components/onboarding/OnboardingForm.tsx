@@ -148,22 +148,27 @@ export function OnboardingForm({ onSubmit }: { onSubmit?: () => void } = {}) {
         <div className="p-8 space-y-7">
 
           {/* Repos */}
-          <div className="space-y-3">
+          <div className="space-y-3" style={analysisMode === 'demo' ? { opacity: 0.7, pointerEvents: 'none' } : {}}>
             <label className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'hsl(230 20% 50%)' }}>
-              Repository URL
+              {analysisMode === 'demo' ? 'Repository (Pre-configured)' : 'Repository URL'}
             </label>
             {repos.map((repo, i) => (
               <div key={i} className="flex gap-2">
                 <input
                   type="text"
                   className="flex-1 rounded-xl px-4 py-3 text-sm font-mono outline-none transition-all"
-                  style={{ border: '1.5px solid hsl(230 20% 88%)', background: 'hsl(230 30% 98%)' }}
-                  placeholder="https://github.com/org/spring-monolith"
-                  value={repo.url}
+                  style={{ 
+                    border: '1.5px solid hsl(230 20% 88%)', 
+                    background: analysisMode === 'demo' ? 'hsl(230 10% 94%)' : 'hsl(230 30% 98%)',
+                    cursor: analysisMode === 'demo' ? 'not-allowed' : 'text'
+                  }}
+                  placeholder={analysisMode === 'demo' ? "spring-projects/spring-petclinic" : "https://github.com/org/spring-monolith"}
+                  value={analysisMode === 'demo' ? "https://github.com/spring-projects/spring-petclinic" : repo.url}
                   onChange={e => updateRepo(i, e.target.value)}
                   onFocus={e => (e.target.style.borderColor = 'hsl(244 80% 65%)')}
                   onBlur={e => (e.target.style.borderColor = 'hsl(230 20% 88%)')}
-                  required
+                  required={analysisMode !== 'demo'}
+                  disabled={analysisMode === 'demo'}
                 />
                 {i > 0 && (
                   <button type="button" onClick={() => setRepos(repos.filter((_, ri) => ri !== i))}
@@ -174,11 +179,13 @@ export function OnboardingForm({ onSubmit }: { onSubmit?: () => void } = {}) {
                 )}
               </div>
             ))}
-            <button type="button" onClick={() => setRepos([...repos, { url: '', role: 'dependency' }])}
-              className="text-xs font-semibold flex items-center gap-1 transition-colors"
-              style={{ color: 'hsl(244 70% 60%)' }}>
-              + Add submodule / dependency repo
-            </button>
+            {analysisMode !== 'demo' && (
+              <button type="button" onClick={() => setRepos([...repos, { url: '', role: 'dependency' }])}
+                className="text-xs font-semibold flex items-center gap-1 transition-colors"
+                style={{ color: 'hsl(244 70% 60%)' }}>
+                + Add submodule / dependency repo
+              </button>
+            )}
           </div>
 
           {/* GitHub Token */}
