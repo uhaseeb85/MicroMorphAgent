@@ -11,9 +11,10 @@ interface AnalysisDashboardProps {
     onCancel: () => void;
     resultsReady?: boolean;
     onViewResults?: () => void;
+    onHome?: () => void;
 }
 
-export function AnalysisDashboard({ onEditConfig, onCancel, resultsReady = false, onViewResults }: AnalysisDashboardProps) {
+export function AnalysisDashboard({ onEditConfig, onCancel, resultsReady = false, onViewResults, onHome }: AnalysisDashboardProps) {
     const phase = useAnalysisStore((state) => state.phase);
     const progressMessage = useAnalysisStore((state) => state.progressMessage);
     const filesProcessed = useAnalysisStore((state) => state.filesProcessed);
@@ -36,7 +37,11 @@ export function AnalysisDashboard({ onEditConfig, onCancel, resultsReady = false
             {/* Header */}
             <header className="border-b neo-divider bg-transparent">
                 <div className="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
+                    <button
+                        onClick={onHome}
+                        disabled={!onHome}
+                        className={`flex items-center gap-4 transition-opacity ${onHome ? 'hover:opacity-75 cursor-pointer' : 'cursor-default'}`}
+                    >
                         <div className="neo-button-primary w-10 h-10 rounded-2xl flex items-center justify-center">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <polyline points="16 18 22 12 16 6" />
@@ -54,7 +59,7 @@ export function AnalysisDashboard({ onEditConfig, onCancel, resultsReady = false
                                 </span>
                             </div>
                         </div>
-                    </div>
+                    </button>
 
                     <div className="flex items-center gap-3">
                         <ThemeToggle />

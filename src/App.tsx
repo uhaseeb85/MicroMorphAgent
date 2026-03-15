@@ -2,11 +2,28 @@ import React, { useEffect, useState } from 'react';
 import { OnboardingForm } from './components/onboarding/OnboardingForm';
 import { ReportView } from './components/report/ReportView';
 import { AnalysisDashboard } from './components/analysis/AnalysisDashboard';
+import { HeroPage } from './components/HeroPage';
 import { useAnalysisStore } from './store/analysisStore';
 import { Orchestrator } from './engine/Orchestrator';
 import { ThemeToggle } from './components/layout/ThemeToggle';
 import { clearAllLocalDirectories } from './engine/local/LocalSourceSession';
 import { hasLocalSources, normalizeAnalysisConfig } from './utils/analysisConfig';
+import type { AnalysisConfig } from './types';
+
+const DEMO_CONFIG: AnalysisConfig = {
+  repos: [{ sourceType: 'github', url: '', role: 'primary' }],
+  githubToken: '',
+  openRouterApiKey: '',
+  llmProvider: 'openrouter',
+  options: {
+    maxCommitHistory: 200,
+    includeTestFiles: false,
+    gitCoChangeWindowDays: 180,
+    llmModel: 'anthropic/claude-3.7-sonnet',
+    granularity: 'balanced',
+    analysisMode: 'demo',
+  },
+};
 
 const THEME_STORAGE_KEY = 'decomp_theme';
 
@@ -21,7 +38,7 @@ function App() {
   const theme = useAnalysisStore((state) => state.theme);
   const setTheme = useAnalysisStore((state) => state.setTheme);
 
-  const [editMode, setEditMode] = useState(false);
+  const [showHero, setShowHero] = useState(true);
   const [resultsConfirmed, setResultsConfirmed] = useState(false);
 
   // Load persisted config on first mount
@@ -62,11 +79,11 @@ function App() {
 
   // Kick off analysis when config is freshly set
   useEffect(() => {
-    if (config && !plan && !isAnalyzing && phase === 0 && !editMode) {
+    if (config && !plan && !isAnalyzing && phase === 0 && !showHero) {
       const engine = new Orchestrator(config);
       engine.runAnalysis().catch(err => console.error('Pipeline failed', err));
     }
-  }, [config, plan, isAnalyzing, phase, editMode]);
+  }, [config, plan, isAnalyzing, phase, showHero]);
 
   const fullReset = () => {
     clearAllLocalDirectories();
@@ -78,18 +95,22 @@ function App() {
   const handleEditConfig = () => {
     resetPipeline();
     setResultsConfirmed(false);
-    setEditMode(true);
+    setShowHero(true);
   };
 
   const handleRetry = () => {
     resetPipeline();
     setResultsConfirmed(false);
-    setEditMode(false);
   };
 
-  // Show form if no config, or user clicked Edit
-  if (!config || editMode) {
-    return <OnboardingForm onSubmit={() => setEditMode(false)} />;
+  // Show hero landing page with embedded form
+  if (showHero) {
+    return (
+      <HeroPage
+        formNode={<OnboardingForm embedded onSubmit={() => setShowHero(false)} />}
+        onTryDemo={() => { setShowHero(false); setConfig(DEMO_CONFIG); }}
+      />
+    );
   }
 
   // Show report only after the user confirms they want to review it.
@@ -156,6 +177,7 @@ function App() {
       onCancel={fullReset}
       resultsReady={!!plan}
       onViewResults={() => setResultsConfirmed(true)}
+      onHome={handleEditConfig}
     />
   );
 }

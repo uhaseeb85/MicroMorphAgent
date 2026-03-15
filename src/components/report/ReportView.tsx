@@ -351,7 +351,11 @@ export function ReportView({ plan, onNewAnalysis }: { plan: DecompositionPlan; o
     <div className="neo-shell min-h-screen pb-20 text-foreground">
       {/* Top Bar */}
       <div className="sticky top-0 z-20 border-b neo-divider px-8 py-4 flex items-center justify-between gap-6 bg-background/70 backdrop-blur-xl">
-        <div className="flex items-center gap-4">
+        <button
+          onClick={onNewAnalysis}
+          disabled={!onNewAnalysis}
+          className={`flex items-center gap-4 transition-opacity ${onNewAnalysis ? 'hover:opacity-75 cursor-pointer' : 'cursor-default'}`}
+        >
           <div className="neo-button-primary w-10 h-10 rounded-2xl flex items-center justify-center">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
@@ -369,7 +373,7 @@ export function ReportView({ plan, onNewAnalysis }: { plan: DecompositionPlan; o
                   </span>
               </div>
           </div>
-        </div>
+        </button>
 
         <div className="hidden lg:flex items-center gap-6">
             <div className="flex items-center gap-3">
