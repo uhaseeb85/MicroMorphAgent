@@ -122,9 +122,9 @@ export function HeroPage({ formNode, onTryDemo }: HeroPageProps) {
             {/* Feature highlights */}
             <div className="space-y-3">
               {[
-                { icon: Layers, color: 'text-blue-500', text: 'Bounded context detection from real code structure' },
-                { icon: GitCommit, color: 'text-violet-500', text: 'Co-change matrix from Git commit history' },
-                { icon: Network, color: 'text-teal-500', text: 'Import-level dependency graph per class' },
+                { icon: Layers, color: 'text-blue-500', text: 'Identify functional modules from code (AI-powered)' },
+                { icon: GitCommit, color: 'text-violet-500', text: 'Analyze code evolution with Git history (Non-AI)' },
+                { icon: Network, color: 'text-teal-500', text: 'Visualize class-level dependencies (Non-AI)' },
               ].map(({ icon: Icon, color, text }) => (
                 <div key={text} className="flex items-center gap-3">
                   <Icon size={16} className={color} />

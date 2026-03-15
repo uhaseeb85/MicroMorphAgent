@@ -42,7 +42,7 @@ Six sequential phases run in a real-time dashboard:
 |---|-------|--------------|
 | 1 | POM Discovery | Fetches and parses `pom.xml` to extract `groupId` and module metadata. |
 | 2 | Code Ingestion | Downloads all `.java` files via the GitHub Contents API; parses annotations, imports, and package structure. |
-| 3 | Graph Construction | Builds a co-change matrix from Git commit history and an import-level dependency graph. |
+| 3 | Graph Construction | Combines AI-powered analysis for semantic insights with non-AI methods like Git history tracking and dependency mapping. |
 | 4 | AI Summarization | Sends per-package class summaries to the LLM to produce semantic package descriptions. |
 | 5 | Decomposition Reasoning | LLM identifies bounded contexts, generates the roadmap, risk table, and per-service module structures. |
 | 6 | Report | Renders the interactive report. |
