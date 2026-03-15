@@ -337,7 +337,7 @@ export function OnboardingForm({ onSubmit }: { onSubmit?: () => void } = {}) {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {([
                 {
-                  value: 'ai' as AnalysisMode, label: 'AI Deep', sub: 'Semantic',
+                  value: 'ai' as AnalysisMode, label: 'AI Analysis', sub: '',
                   icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a4 4 0 0 1 4 4 4 4 0 0 1-4 4 4 4 0 0 1-4-4 4 4 0 0 1 4-4" /><path d="M6 20v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" /></svg>
                 },
                 {
