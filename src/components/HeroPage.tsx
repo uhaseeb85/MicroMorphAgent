@@ -76,16 +76,13 @@ export function HeroPage({ formNode, onTryDemo }: HeroPageProps) {
       <header className="sticky top-0 z-50 w-full border-b neo-divider neo-panel bg-[hsl(var(--background)/0.75)] backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
           {/* Logo */}
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 flex items-center justify-center rounded-2xl neo-button-primary text-[15px] font-black tracking-tighter select-none">
-              M
-            </div>
-            <div className="leading-none">
-              <span className="font-bold text-sm tracking-tight text-foreground">MicroMorphAgent</span>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mt-0.5">
-                Spring Boot Decomposer
-              </p>
-            </div>
+          <div className="flex items-center gap-2.5">
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
+              <rect width="28" height="28" rx="8" fill="hsl(var(--foreground))" />
+              <path d="M7 19V9l4.5 6 2.5-3.5 2.5 3.5L21 9v10" stroke="hsl(var(--background))" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <circle cx="14" cy="14" r="2" fill="hsl(var(--background))" />
+            </svg>
+            <span className="font-black text-base tracking-tight text-foreground select-none">Micro Morph</span>
           </div>
 
           <div className="flex items-center gap-3">
@@ -104,7 +101,7 @@ export function HeroPage({ formNode, onTryDemo }: HeroPageProps) {
             <div className="neo-inset inline-flex items-center gap-2 rounded-full px-4 py-1.5 w-fit">
               <Code2 size={12} className="text-muted-foreground" />
               <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                Spring Boot · Java · AI-Powered
+                AI-Powered Decomposition Plan
               </span>
             </div>
 
