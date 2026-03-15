@@ -8,8 +8,6 @@ import {
   Map,
   Box,
   Play,
-  Zap,
-  Activity,
   Code2,
 } from 'lucide-react';
 
@@ -69,68 +67,7 @@ const FEATURES = [
   },
 ];
 
-const PHASES = [
-  {
-    n: 1,
-    label: 'POM Discovery',
-    desc: 'Fetches and parses pom.xml to extract groupId and module metadata.',
-  },
-  {
-    n: 2,
-    label: 'Code Ingestion',
-    desc: 'Downloads all .java files and parses annotations, imports, and packages.',
-  },
-  {
-    n: 3,
-    label: 'Graph Construction',
-    desc: 'Builds a co-change matrix and an import-level dependency graph.',
-  },
-  {
-    n: 4,
-    label: 'AI Summarization',
-    desc: 'LLM generates semantic descriptions for every package.',
-  },
-  {
-    n: 5,
-    label: 'Decomposition',
-    desc: 'LLM identifies bounded contexts, roadmap, risks, and module structures.',
-  },
-  {
-    n: 6,
-    label: 'Report',
-    desc: 'Interactive report with graph, roadmap, risk panel, and PDF export.',
-  },
-];
 
-const MODES = [
-  {
-    icon: Zap,
-    iconColor: 'text-blue-500',
-    badge: 'Full Power',
-    badgeClass: 'bg-blue-500/15 text-blue-600 dark:text-blue-300',
-    title: 'AI Analysis',
-    requires: 'GitHub token + OpenRouter key',
-    desc: 'Full six-phase pipeline — LLM calls throughout, maximum insight.',
-  },
-  {
-    icon: Activity,
-    iconColor: 'text-violet-500',
-    badge: 'No LLM',
-    badgeClass: 'bg-violet-500/15 text-violet-600 dark:text-violet-300',
-    title: 'Static',
-    requires: 'GitHub token only',
-    desc: 'Phases 1–3 run normally; LLM phases fall back to heuristic algorithms for a partial report.',
-  },
-  {
-    icon: Play,
-    iconColor: 'text-emerald-500',
-    badge: 'No credentials',
-    badgeClass: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300',
-    title: 'Demo',
-    requires: 'Nothing',
-    desc: 'Runs against a synthetic Spring PetClinic dataset so you can explore the full UI instantly.',
-  },
-];
 
 export function HeroPage({ formNode, onTryDemo }: HeroPageProps) {
   return (
@@ -157,10 +94,10 @@ export function HeroPage({ formNode, onTryDemo }: HeroPageProps) {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 pb-24 space-y-24">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 pb-16 sm:pb-24 space-y-16 lg:space-y-24">
 
         {/* ── Hero — two-column ── */}
-        <section className="pt-16 pb-4 grid lg:grid-cols-2 gap-12 items-start">
+        <section className="pt-10 sm:pt-16 pb-4 grid lg:grid-cols-2 gap-10 lg:gap-12 items-start">
           {/* Left column */}
           <div className="flex flex-col gap-6">
             {/* Badge */}
@@ -172,7 +109,7 @@ export function HeroPage({ formNode, onTryDemo }: HeroPageProps) {
             </div>
 
             {/* Headline */}
-            <h1 className="text-4xl sm:text-5xl font-black tracking-tighter leading-[1.05] text-foreground">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tighter leading-[1.05] text-foreground">
               From monolith to microservices,{' '}
               <span className="opacity-50">in minutes.</span>
             </h1>
@@ -243,68 +180,6 @@ export function HeroPage({ formNode, onTryDemo }: HeroPageProps) {
           </div>
         </section>
 
-        {/* ── How It Works ── */}
-        <section className="space-y-8">
-          <div className="text-center space-y-2">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              How it works
-            </p>
-            <h2 className="text-3xl font-black tracking-tighter text-foreground">
-              Six phases, one coherent plan
-            </h2>
-          </div>
-
-          {/* Phase tiles — horizontal scroll on mobile */}
-          <div className="flex flex-col sm:flex-row gap-3 overflow-x-auto pb-2">
-            {PHASES.map(({ n, label, desc }) => (
-              <div
-                key={n}
-                className="neo-panel-soft rounded-3xl p-5 flex flex-col gap-3 flex-1 min-w-[170px]"
-              >
-                {/* Phase number */}
-                <div className="w-8 h-8 rounded-xl neo-button-primary flex items-center justify-center text-[11px] font-black">
-                  {n}
-                </div>
-                <div className="space-y-1">
-                  <p className="font-bold tracking-tighter text-foreground text-[13px]">{label}</p>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">{desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* ── Analysis Modes ── */}
-        <section className="space-y-8">
-          <div className="text-center space-y-2">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              Flexibility built in
-            </p>
-            <h2 className="text-3xl font-black tracking-tighter text-foreground">
-              Three modes, one tool
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {MODES.map(({ icon: Icon, iconColor, badge, badgeClass, title, requires, desc }) => (
-              <div key={title} className="neo-panel rounded-3xl p-7 flex flex-col gap-5">
-                <div className="flex items-start justify-between">
-                  <Icon size={22} className={iconColor} />
-                  <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${badgeClass}`}>
-                    {badge}
-                  </span>
-                </div>
-                <div className="space-y-1.5">
-                  <h3 className="font-black tracking-tighter text-foreground text-lg">{title}</h3>
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-                    Requires: {requires}
-                  </p>
-                </div>
-                <p className="text-[12px] text-muted-foreground leading-relaxed">{desc}</p>
-              </div>
-            ))}
-          </div>
-        </section>
       </main>
 
       {/* ── Footer ── */}

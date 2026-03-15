@@ -12,9 +12,9 @@ export function ProgressBar({ phase, progressMessage }: ProgressBarProps) {
 
     return (
         <div
-            className="neo-panel rounded-[2rem] p-8"
+            className="neo-panel rounded-[2rem] p-5 sm:p-8"
         >
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-5 sm:mb-6 gap-4">
                 <div className="flex items-center gap-4">
                     <div className="relative w-12 h-12">
                         <div className="absolute inset-0 rounded-2xl neo-inset animate-pulse" />

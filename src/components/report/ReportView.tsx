@@ -165,13 +165,13 @@ function ServiceDetail({ context, index, total }: { context: BoundedContext; ind
 
   return (
     <div className="neo-panel rounded-[2rem] overflow-hidden">
-      <div className="px-8 py-6 border-b neo-divider bg-transparent">
-        <div className="flex items-start justify-between gap-6">
+      <div className="px-5 sm:px-8 py-4 sm:py-6 border-b neo-divider bg-transparent">
+        <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
             <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
               Service Infrastructure {index + 1} / {total}
             </span>
-            <h2 className="text-3xl font-bold tracking-tighter text-foreground">
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tighter text-foreground">
               {context.name}
             </h2>
             <div className="flex items-center gap-2 mt-2">
@@ -189,7 +189,7 @@ function ServiceDetail({ context, index, total }: { context: BoundedContext; ind
         </div>
       </div>
 
-      <div className="p-8 space-y-10">
+      <div className="p-5 sm:p-8 space-y-8 sm:space-y-10">
         <div className="grid lg:grid-cols-2 gap-10">
             <div>
               <h4 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-4 flex items-center gap-2">
@@ -350,7 +350,7 @@ export function ReportView({ plan, onNewAnalysis }: { plan: DecompositionPlan; o
   return (
     <div className="neo-shell min-h-screen pb-20 text-foreground">
       {/* Top Bar */}
-      <div className="sticky top-0 z-20 border-b neo-divider px-8 py-4 flex items-center justify-between gap-6 bg-background/70 backdrop-blur-xl">
+      <div className="sticky top-0 z-20 border-b neo-divider px-4 sm:px-8 py-3 sm:py-4 flex items-center justify-between gap-3 sm:gap-6 bg-background/70 backdrop-blur-xl">
         <button
           onClick={onNewAnalysis}
           disabled={!onNewAnalysis}
@@ -394,22 +394,22 @@ export function ReportView({ plan, onNewAnalysis }: { plan: DecompositionPlan; o
             </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <ThemeToggle />
           {onNewAnalysis && (
             <button onClick={onNewAnalysis}
-              className="neo-button text-[11px] font-bold uppercase tracking-widest px-4 py-2 rounded-2xl transition-all text-muted-foreground">
+              className="hidden sm:block neo-button text-[11px] font-bold uppercase tracking-widest px-4 py-2 rounded-2xl transition-all text-muted-foreground">
               Home
             </button>
           )}
-          <div className="w-[1px] h-6 bg-border mx-1" />
+          <div className="hidden sm:block w-[1px] h-6 bg-border mx-1" />
           <button onClick={handleExportJson}
-            className="neo-button text-[11px] font-bold uppercase tracking-widest px-4 py-2 rounded-2xl transition-all text-muted-foreground">
+            className="neo-button text-[11px] font-bold uppercase tracking-widest px-3 sm:px-4 py-2 rounded-2xl transition-all text-muted-foreground">
             JSON
           </button>
           <button onClick={handleExportPdf}
-            className="neo-button-primary text-[11px] font-bold uppercase tracking-widest px-5 py-2.5 rounded-2xl transition-all">
-            Export PDF
+            className="neo-button-primary text-[11px] font-bold uppercase tracking-widest px-3 sm:px-5 py-2 sm:py-2.5 rounded-2xl transition-all">
+            <span className="hidden sm:inline">Export </span>PDF
           </button>
         </div>
       </div>
@@ -423,12 +423,12 @@ export function ReportView({ plan, onNewAnalysis }: { plan: DecompositionPlan; o
         </div>
       </div>
 
-      <div className="max-w-[1400px] mx-auto px-8">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
           {/* Tab bar */}
-          <div className="mt-8 flex gap-2 rounded-full p-2 neo-inset">
+          <div className="mt-6 sm:mt-8 flex gap-1 sm:gap-2 rounded-full p-1.5 sm:p-2 neo-inset overflow-x-auto">
             {tabs.map(tab => (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                className={`px-6 py-3 text-[11px] font-bold uppercase tracking-widest transition-all relative rounded-full ${activeTab === tab.id ? 'neo-toggle-active text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                className={`flex-shrink-0 px-4 sm:px-6 py-2.5 sm:py-3 text-[11px] font-bold uppercase tracking-widest transition-all relative rounded-full ${activeTab === tab.id ? 'neo-toggle-active text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
                 {tab.label}
               </button>
             ))}
