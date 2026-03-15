@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAnalysisStore } from '../../store/analysisStore';
 import type { AnalysisConfig, RepoInput } from '../../types';
 import { ThemeToggle } from '../layout/ThemeToggle';
+import { registerLocalDirectory } from '../../engine/local/LocalSourceSession';
+import { hasLocalSources, normalizeAnalysisConfig } from '../../utils/analysisConfig';
 
 interface OpenRouterModel {
   id: string;
@@ -16,13 +18,26 @@ interface OpenRouterModel {
 function loadSaved() {
   try {
     const raw = localStorage.getItem('decomp_config');
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = normalizeAnalysisConfig(JSON.parse(raw));
+    if (!parsed || hasLocalSources(parsed)) {
+      return null;
+    }
+
+    return parsed;
   } catch { return null; }
 }
 
 type Granularity = 'coarse' | 'balanced' | 'fine';
 type AnalysisMode = 'ai' | 'static' | 'demo';
-type LLMProvider = 'openrouter';
+type SourceMode = 'github' | 'local';
+
+type DirectoryPickerHost = typeof globalThis & {
+  showDirectoryPicker?: () => Promise<FileSystemDirectoryHandle>;
+};
 
 const GRANULARITY_OPTIONS: { value: Granularity; label: string; sub: string; hint: string }[] = [
   { value: 'coarse', label: 'Coarse', sub: 'Broad groupings', hint: '2–4 services' },
@@ -37,9 +52,12 @@ export function OnboardingForm({ onSubmit }: { onSubmit?: () => void } = {}) {
   const [githubToken, setGithubToken] = useState(saved?.githubToken || '');
   const [openRouterKey, setOpenRouterKey] = useState(saved?.openRouterApiKey || '');
   const [openRouterModel, setOpenRouterModel] = useState(saved?.options?.llmModel || 'anthropic/claude-3.7-sonnet');
-  const [repos, setRepos] = useState<RepoInput[]>(saved?.repos?.length ? saved.repos : [{ url: '', role: 'primary' }]);
+  const [repos, setRepos] = useState<RepoInput[]>(saved?.repos?.length ? saved.repos : [{ sourceType: 'github', url: '', role: 'primary' }]);
   const [granularity, setGranularity] = useState<Granularity>(saved?.options?.granularity || 'balanced');
   const [analysisMode, setAnalysisMode] = useState<AnalysisMode>(saved?.options?.analysisMode || 'ai');
+  const [sourceMode, setSourceMode] = useState<SourceMode>(saved?.repos?.[0]?.sourceType === 'local' ? 'local' : 'github');
+  const [localDirectoryHandle, setLocalDirectoryHandle] = useState<FileSystemDirectoryHandle | null>(null);
+  const [localFolderName, setLocalFolderName] = useState('');
 
   const [orModels, setOrModels] = useState<OpenRouterModel[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
@@ -70,6 +88,24 @@ export function OnboardingForm({ onSubmit }: { onSubmit?: () => void } = {}) {
     setRepos(next);
   };
 
+  const handlePickLocalFolder = async () => {
+    const pickerWindow = globalThis as DirectoryPickerHost;
+    if (!pickerWindow.showDirectoryPicker) {
+      alert('Local folder selection currently requires a Chromium-based browser.');
+      return;
+    }
+
+    try {
+      const handle = await pickerWindow.showDirectoryPicker();
+      setLocalDirectoryHandle(handle);
+      setLocalFolderName(handle.name);
+    } catch (error) {
+      if ((error as DOMException)?.name !== 'AbortError') {
+        alert('Could not access the selected folder. Please try again.');
+      }
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (analysisMode === 'ai') {
@@ -79,7 +115,21 @@ export function OnboardingForm({ onSubmit }: { onSubmit?: () => void } = {}) {
     // Auto-fill dummy repo for demo
     let finalRepos = repos;
     if (analysisMode === 'demo' && repos.every(r => !r.url.trim())) {
-      finalRepos = [{ url: 'https://github.com/spring-projects/spring-petclinic', role: 'primary' }];
+      finalRepos = [{ sourceType: 'github', url: 'https://github.com/spring-projects/spring-petclinic', role: 'primary' }];
+    } else if (sourceMode === 'local') {
+      if (!localDirectoryHandle) {
+        alert('Please select a local project folder.');
+        return;
+      }
+
+      const sourceId = registerLocalDirectory(localDirectoryHandle);
+      finalRepos = [{
+        sourceType: 'local',
+        url: `local://${localDirectoryHandle.name}`,
+        displayName: localDirectoryHandle.name,
+        sourceId,
+        role: 'primary'
+      }];
     } else if (repos.some(r => !r.url.trim())) {
       alert('Please provide at least one repository URL');
       return;
@@ -100,7 +150,12 @@ export function OnboardingForm({ onSubmit }: { onSubmit?: () => void } = {}) {
       }
     };
 
-    localStorage.setItem('decomp_config', JSON.stringify(config));
+    if (finalRepos.some((repo) => repo.sourceType === 'local')) {
+      localStorage.removeItem('decomp_config');
+    } else {
+      localStorage.setItem('decomp_config', JSON.stringify(config));
+    }
+
     setConfig(config);
     onSubmit?.();
   };
@@ -149,37 +204,84 @@ export function OnboardingForm({ onSubmit }: { onSubmit?: () => void } = {}) {
         className="neo-panel mx-auto max-w-lg rounded-[2rem] overflow-hidden">
         <div className="p-10 space-y-8">
 
+          <div className="space-y-4" style={analysisMode === 'demo' ? { opacity: 0.7, pointerEvents: 'none' } : {}}>
+            <label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+              Project Source
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              {([
+                { id: 'github' as const, label: 'GitHub', sub: 'Remote repository' },
+                { id: 'local' as const, label: 'Local Folder', sub: 'Chromium only' }
+              ]).map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => setSourceMode(option.id)}
+                  className={`rounded-2xl py-3 px-4 text-left flex flex-col gap-1.5 transition-all outline-none ${sourceMode === option.id ? 'neo-button-primary' : 'neo-button text-muted-foreground'}`}
+                >
+                  <div className="font-bold text-[10px] uppercase tracking-wider">{option.label}</div>
+                  <div className="text-[9px] opacity-70 font-medium">{option.sub}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Repos */}
           <div className="space-y-3" style={analysisMode === 'demo' ? { opacity: 0.7, pointerEvents: 'none' } : {}}>
             <label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-              {analysisMode === 'demo' ? 'Repository (Pre-configured)' : 'Repository URL'}
+              {analysisMode === 'demo' ? 'Repository (Pre-configured)' : sourceMode === 'local' ? 'Local Project Folder' : 'Repository URL'}
             </label>
-            {repos.map((repo, i) => (
-              <div key={i} className="flex gap-2">
-                <input
-                  type="text"
-                  className="neo-field flex-1 rounded-2xl px-4 py-3 text-sm font-mono outline-none"
-                  style={{ 
-                    cursor: analysisMode === 'demo' ? 'not-allowed' : 'text'
-                  }}
-                  placeholder={analysisMode === 'demo' ? "spring-projects/spring-petclinic" : "https://github.com/org/spring-monolith"}
-                  value={analysisMode === 'demo' ? "https://github.com/spring-projects/spring-petclinic" : repo.url}
-                  onChange={e => updateRepo(i, e.target.value)}
-                  onFocus={inputFocus}
-                  onBlur={inputBlur}
-                  required={analysisMode !== 'demo'}
-                  disabled={analysisMode === 'demo'}
-                />
-                {i > 0 && (
-                  <button type="button" onClick={() => setRepos(repos.filter((_, ri) => ri !== i))}
-                    className="neo-button px-3 rounded-2xl text-sm font-medium text-rose-500 dark:text-rose-300 transition-colors">
-                    ✕
-                  </button>
-                )}
+            {sourceMode === 'local' && analysisMode !== 'demo' ? (
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={handlePickLocalFolder}
+                  className="neo-button w-full rounded-2xl px-4 py-3 text-sm font-semibold text-foreground"
+                >
+                  {localFolderName ? 'Change Local Folder' : 'Choose Local Folder'}
+                </button>
+                <div className="neo-inset rounded-2xl px-4 py-3">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">
+                    Selected Folder
+                  </p>
+                  <p className="text-sm font-mono text-foreground/85 break-all">
+                    {localFolderName || 'No folder selected yet'}
+                  </p>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Local folder analysis runs in-browser and skips Git commit history. Use a Chromium-based browser for folder selection.
+                </p>
               </div>
-            ))}
-            {analysisMode !== 'demo' && (
-              <button type="button" onClick={() => setRepos([...repos, { url: '', role: 'dependency' }])}
+            ) : (
+              <>
+                {repos.map((repo, i) => (
+                  <div key={i} className="flex gap-2">
+                    <input
+                      type="text"
+                      className="neo-field flex-1 rounded-2xl px-4 py-3 text-sm font-mono outline-none"
+                      style={{ 
+                        cursor: analysisMode === 'demo' ? 'not-allowed' : 'text'
+                      }}
+                      placeholder={analysisMode === 'demo' ? "spring-projects/spring-petclinic" : "https://github.com/org/spring-monolith"}
+                      value={analysisMode === 'demo' ? "https://github.com/spring-projects/spring-petclinic" : repo.url}
+                      onChange={e => updateRepo(i, e.target.value)}
+                      onFocus={inputFocus}
+                      onBlur={inputBlur}
+                      required={analysisMode !== 'demo'}
+                      disabled={analysisMode === 'demo'}
+                    />
+                    {i > 0 && (
+                      <button type="button" onClick={() => setRepos(repos.filter((_, ri) => ri !== i))}
+                        className="neo-button px-3 rounded-2xl text-sm font-medium text-rose-500 dark:text-rose-300 transition-colors">
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </>
+            )}
+            {analysisMode !== 'demo' && sourceMode === 'github' && (
+              <button type="button" onClick={() => setRepos([...repos, { sourceType: 'github', url: '', role: 'dependency' }])}
                 className="text-xs font-semibold flex items-center gap-1 transition-colors text-foreground/80 hover:text-foreground">
                 + Add submodule / dependency repo
               </button>
@@ -187,6 +289,7 @@ export function OnboardingForm({ onSubmit }: { onSubmit?: () => void } = {}) {
           </div>
 
           {/* GitHub Token */}
+          {sourceMode === 'github' && analysisMode !== 'demo' && (
           <div className="space-y-2">
             <label className="text-sm font-semibold flex items-center gap-2 text-foreground/90">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
@@ -205,6 +308,7 @@ export function OnboardingForm({ onSubmit }: { onSubmit?: () => void } = {}) {
             />
             <p className="text-xs text-muted-foreground">Required only for private repositories.</p>
           </div>
+          )}
 
           {/* Granularity */}
           <div className="space-y-4">

@@ -1,6 +1,7 @@
 import { useAnalysisStore } from '../store/analysisStore';
 import { RepoFetcher } from './github/RepoFetcher';
-import { GitHistoryFetcher } from './github/GitHistoryFetcher';
+import { CommitData, GitHistoryFetcher } from './github/GitHistoryFetcher';
+import { LocalSourceFetcher } from './local/LocalSourceFetcher';
 import { PomXmlParser } from './parser/PomXmlParser';
 import { SpringAnnotationParser } from './parser/SpringAnnotationParser';
 import { CoChangeMatrix } from './graph/CoChangeMatrix';
@@ -10,7 +11,7 @@ import { Summarizer, PackageSummary } from './llm/Summarizer';
 import { BoundedContextAnalyzer } from './llm/BoundedContextAnalyzer';
 import { RoadmapGenerator, RoadmapResponse } from './llm/RoadmapGenerator';
 import { ModuleStructureGenerator } from './llm/ModuleStructureGenerator';
-import { AnalysisConfig, DecompositionPlan, JavaClass, BoundedContext, GraphNode, ModuleStructure } from '../types';
+import { AnalysisConfig, DecompositionPlan, JavaClass, BoundedContext, GraphNode, ModuleStructure, RepoInput } from '../types';
 
 export class Orchestrator {
   private config: AnalysisConfig;
@@ -29,7 +30,7 @@ export class Orchestrator {
       provider: this.config.llmProvider,
       model: this.config.options.llmModel,
       hasOpenRouterKey: !!this.config.openRouterApiKey,
-      repos: this.config.repos.map(r => r.url)
+      repos: this.config.repos.map((repo) => this.getRepoLabel(repo))
     });
 
     if (this.config.options.analysisMode === 'demo') {
@@ -42,6 +43,7 @@ export class Orchestrator {
     try {
       const repoFetcher = new RepoFetcher(this.config.githubToken);
       const gitFetcher = new GitHistoryFetcher(this.config.githubToken);
+      const localFetcher = new LocalSourceFetcher();
       const pomParser = new PomXmlParser();
       const springParser = new SpringAnnotationParser();
       const coChangeMatrixBuilder = new CoChangeMatrix();
@@ -58,10 +60,13 @@ export class Orchestrator {
       store.addActivity({ type: 'pom', message: 'Fetching pom.xml from repository...', status: 'pending' });
 
       const primaryRepo = this.config.repos.find(r => r.role === 'primary') || this.config.repos[0];
+      const isLocalRepo = primaryRepo.sourceType === 'local';
       let baseGroupId = 'com.example';
 
       try {
-        const pomContent = await repoFetcher.fetchFileContent(primaryRepo.url, 'pom.xml', primaryRepo.branch);
+        const pomContent = isLocalRepo
+          ? await localFetcher.fetchFileContent(primaryRepo, 'pom.xml')
+          : await repoFetcher.fetchFileContent(primaryRepo.url, 'pom.xml', primaryRepo.branch);
         if (pomContent) {
           const pomData = pomParser.parse(pomContent);
           if (pomData.groupId) baseGroupId = pomData.groupId;
@@ -76,10 +81,16 @@ export class Orchestrator {
       }
 
       // Phase 2: Code Ingestion
-      store.setPhase(2, 'Fetching Java source files via GitHub API...');
-      store.addActivity({ type: 'git', message: 'Scanning repository for Java files...', status: 'pending' });
+      store.setPhase(2, isLocalRepo ? 'Reading Java source files from selected local folder...' : 'Fetching Java source files via GitHub API...');
+      store.addActivity({
+        type: 'git',
+        message: isLocalRepo ? 'Scanning local folder for Java files...' : 'Scanning repository for Java files...',
+        status: 'pending'
+      });
 
-      const javaSourceFiles = await repoFetcher.fetchJavaFiles(primaryRepo, this.config.options.includeTestFiles);
+      const javaSourceFiles = isLocalRepo
+        ? await localFetcher.fetchJavaFiles(primaryRepo, this.config.options.includeTestFiles)
+        : await repoFetcher.fetchJavaFiles(primaryRepo, this.config.options.includeTestFiles);
       store.setFileProgress(0, javaSourceFiles.length, '');
       store.addActivity({ type: 'git', message: `Found ${javaSourceFiles.length} Java files`, status: 'success' });
 
@@ -88,7 +99,7 @@ export class Orchestrator {
 
       for (let i = 0; i < javaSourceFiles.length; i++) {
         const file = javaSourceFiles[i];
-        const parsed = springParser.parseStringFallback(file.content, file.path, file.repo);
+        const parsed = springParser.parseSource(file.content, file.path, file.repo);
         javaClasses.push(parsed);
 
         // Throttle progress updates to avoid flooding the activity log
@@ -98,16 +109,30 @@ export class Orchestrator {
       }
 
       // Phase 3: Graph Construction
-      store.setPhase(3, 'Fetching Git Commit History for Co-Change Analysis...');
-      store.addActivity({ type: 'git', message: `Fetching last ${this.config.options.maxCommitHistory} commits...`, status: 'pending' });
+      let commits: CommitData[] = [];
+      if (isLocalRepo) {
+        store.setPhase(3, 'Skipping Git commit history for local folder analysis...');
+        store.addActivity({
+          type: 'info',
+          message: 'Local folder analysis does not include commit history or co-change signals. Structural dependency analysis remains active.',
+          status: 'success'
+        });
+      } else {
+        store.setPhase(3, 'Fetching Git Commit History for Co-Change Analysis...');
+        store.addActivity({ type: 'git', message: `Fetching last ${this.config.options.maxCommitHistory} commits...`, status: 'pending' });
 
-      const commits = await gitFetcher.fetchCommitHistory(
-        primaryRepo,
-        this.config.options.maxCommitHistory,
-        this.config.options.gitCoChangeWindowDays
-      );
+        commits = await gitFetcher.fetchCommitHistory(
+          primaryRepo,
+          this.config.options.maxCommitHistory,
+          this.config.options.gitCoChangeWindowDays
+        );
+      }
       store.setGitProgress(commits.length);
-      store.addActivity({ type: 'git', message: `Fetched ${commits.length} commits for analysis`, status: 'success' });
+      store.addActivity({
+        type: 'git',
+        message: isLocalRepo ? 'Continuing without commit history data for the selected local folder' : `Fetched ${commits.length} commits for analysis`,
+        status: 'success'
+      });
 
       store.setPhase(3, 'Constructing Co-Change Matrix...');
       store.addActivity({ type: 'graph', message: 'Building co-change matrix from commit history...', status: 'pending' });
@@ -219,7 +244,7 @@ export class Orchestrator {
         sharedLibAssessment: [],
         dependencyGraph: graphNodes,
         generatedAt: new Date().toISOString(),
-        reposAnalyzed: this.config.repos.map(r => r.url)
+        reposAnalyzed: this.config.repos.map((repo) => this.getRepoLabel(repo))
       };
 
       store.setPlan(plan);
@@ -383,6 +408,10 @@ export class Orchestrator {
     store.setAnalyzing(false);
     store.setPhase(6, 'Analysis Complete!');
     return plan;
+  }
+
+  private getRepoLabel(repo: RepoInput): string {
+    return repo.displayName || repo.url;
   }
 
   private generateStaticBoundedContexts(javaClasses: JavaClass[], graphNodes: GraphNode[]): BoundedContext[] {

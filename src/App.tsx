@@ -5,6 +5,8 @@ import { AnalysisDashboard } from './components/analysis/AnalysisDashboard';
 import { useAnalysisStore } from './store/analysisStore';
 import { Orchestrator } from './engine/Orchestrator';
 import { ThemeToggle } from './components/layout/ThemeToggle';
+import { clearAllLocalDirectories } from './engine/local/LocalSourceSession';
+import { hasLocalSources, normalizeAnalysisConfig } from './utils/analysisConfig';
 
 const THEME_STORAGE_KEY = 'decomp_theme';
 
@@ -26,7 +28,22 @@ function App() {
   useEffect(() => {
     const saved = localStorage.getItem('decomp_config');
     if (saved) {
-      try { setConfig(JSON.parse(saved)); } catch { /* ignore */ }
+      try {
+        const parsed = normalizeAnalysisConfig(JSON.parse(saved));
+        if (!parsed) {
+          localStorage.removeItem('decomp_config');
+          return;
+        }
+
+        if (hasLocalSources(parsed)) {
+          localStorage.removeItem('decomp_config');
+          return;
+        }
+
+        setConfig(parsed);
+      } catch {
+        localStorage.removeItem('decomp_config');
+      }
     }
   }, [setConfig]);
 
@@ -52,6 +69,7 @@ function App() {
   }, [config, plan, isAnalyzing, phase, editMode]);
 
   const fullReset = () => {
+    clearAllLocalDirectories();
     localStorage.removeItem('decomp_config');
     globalThis.location.reload();
   };

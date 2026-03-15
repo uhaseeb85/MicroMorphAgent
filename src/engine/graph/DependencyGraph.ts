@@ -1,5 +1,4 @@
-import { JavaClass, GraphNode, CoChangeEntry } from '../../types';
-import { CoChangeMatrix } from './CoChangeMatrix';
+import { JavaClass, GraphNode } from '../../types';
 
 export class DependencyGraphBuilder {
   
@@ -8,6 +7,14 @@ export class DependencyGraphBuilder {
     coChangeMatrix: Map<string, Map<string, number>>
   ): GraphNode[] {
     const nodes = new Map<string, GraphNode>();
+    const classesByPackage = new Map<string, Map<string, string>>();
+
+    for (const javaClass of javaClasses) {
+      const simpleName = javaClass.fullyQualifiedName.split('.').pop() || javaClass.fullyQualifiedName;
+      const packageClasses = classesByPackage.get(javaClass.packageName) || new Map<string, string>();
+      packageClasses.set(simpleName, javaClass.fullyQualifiedName);
+      classesByPackage.set(javaClass.packageName, packageClasses);
+    }
 
     // 1. Initialize nodes
     for (const jc of javaClasses) {
@@ -27,33 +34,35 @@ export class DependencyGraphBuilder {
       });
     }
 
-    // 2. Resolve AST dependencies (Imports) -> Outbound/Inbound
+    // 2. Resolve AST dependencies (imports + parsed type references) -> Outbound/Inbound
     for (const jc of javaClasses) {
       const sourceNode = nodes.get(jc.fullyQualifiedName)!;
-      
+      const explicitImports = new Map<string, string>();
+      const wildcardImports: string[] = [];
+
       for (const imp of jc.imports) {
-        // Only track dependencies within our analyzed system, not external libraries
-        // Check if the import matches any known fully qualified name, or if it's a wildcard import package
-        let matchedTarget: string | null = null;
-        
-        if (nodes.has(imp)) {
-          matchedTarget = imp;
-        } else if (imp.endsWith('.*')) {
-          // Wildcard import: resolving all classes in the package requires a symbol table
-          // which isn't available in the browser. This import is intentionally dropped.
-          // The package-level coupling is still captured via co-change data.
-          console.debug(`[DependencyGraph] wildcard import dropped: ${imp} (from ${jc.fullyQualifiedName})`);
+        if (imp.endsWith('.*')) {
+          wildcardImports.push(imp.slice(0, -2));
+          continue;
         }
 
-        if (matchedTarget) {
-           sourceNode.outboundDeps.push(matchedTarget);
-           const targetNode = nodes.get(matchedTarget)!;
-           targetNode.inboundDeps.push(sourceNode.id);
+        explicitImports.set(imp.split('.').pop() || imp, imp);
+
+        if (nodes.has(imp)) {
+          sourceNode.outboundDeps.push(imp);
+          const targetNode = nodes.get(imp)!;
+          targetNode.inboundDeps.push(sourceNode.id);
         }
       }
       
-      // Attempt heuristic type matching from fields for classes in the SAME package (which don't need imports)
-      // This is a browser approximation. A real parser resolves symbols.
+      for (const reference of jc.typeReferences) {
+        const matchedTarget = this.resolveTypeReference(jc, reference, nodes, explicitImports, wildcardImports, classesByPackage);
+        if (matchedTarget && matchedTarget !== jc.fullyQualifiedName) {
+          sourceNode.outboundDeps.push(matchedTarget);
+          const targetNode = nodes.get(matchedTarget)!;
+          targetNode.inboundDeps.push(sourceNode.id);
+        }
+      }
     }
 
     // 3. Attach Co-Change Data
@@ -96,5 +105,42 @@ export class DependencyGraphBuilder {
     }
 
     return Array.from(nodes.values());
+  }
+
+  private resolveTypeReference(
+    javaClass: JavaClass,
+    reference: string,
+    nodes: Map<string, GraphNode>,
+    explicitImports: Map<string, string>,
+    wildcardImports: string[],
+    classesByPackage: Map<string, Map<string, string>>
+  ): string | null {
+    const normalizedReference = reference.trim();
+    if (!normalizedReference) {
+      return null;
+    }
+
+    if (nodes.has(normalizedReference)) {
+      return normalizedReference;
+    }
+
+    const directImport = explicitImports.get(normalizedReference);
+    if (directImport && nodes.has(directImport)) {
+      return directImport;
+    }
+
+    const samePackageMatch = classesByPackage.get(javaClass.packageName)?.get(normalizedReference);
+    if (samePackageMatch && nodes.has(samePackageMatch)) {
+      return samePackageMatch;
+    }
+
+    for (const wildcardPackage of wildcardImports) {
+      const wildcardMatch = classesByPackage.get(wildcardPackage)?.get(normalizedReference);
+      if (wildcardMatch && nodes.has(wildcardMatch)) {
+        return wildcardMatch;
+      }
+    }
+
+    return null;
   }
 }

@@ -8,10 +8,13 @@ export interface AnalysisConfig {
 }
 
 export interface RepoInput {
+  sourceType: 'github' | 'local';
   url: string;
   branch?: string;
   role: 'primary' | 'dependency' | 'auto-discovered';
   groupId?: string;
+  displayName?: string;
+  sourceId?: string;
 }
 
 export interface AnalysisOptions {
@@ -30,6 +33,7 @@ export interface JavaClass {
   methods: string[];
   fields: string[];
   imports: string[];
+  typeReferences: string[];
   repoSource: string;
   filePath: string;
   layer?: 'controller' | 'service' | 'repository' | 'entity' | 'config' | 'util';

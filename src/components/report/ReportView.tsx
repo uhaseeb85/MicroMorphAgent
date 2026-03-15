@@ -7,6 +7,109 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { ThemeToggle } from '../layout/ThemeToggle';
 
+function ReportExportDocument({ plan }: { plan: DecompositionPlan }) {
+  const sectionStyle: React.CSSProperties = {
+    marginBottom: 28,
+    padding: 24,
+    border: '1px solid #d7dce4',
+    borderRadius: 18,
+    background: '#ffffff'
+  };
+
+  const badgeStyle: React.CSSProperties = {
+    display: 'inline-block',
+    padding: '4px 10px',
+    marginRight: 8,
+    marginBottom: 8,
+    borderRadius: 999,
+    border: '1px solid #d7dce4',
+    background: '#f5f7fb',
+    fontSize: 11,
+    fontWeight: 700,
+    color: '#334155'
+  };
+
+  return (
+    <div style={{ background: '#ffffff', color: '#0f172a', width: 1100, padding: 40, fontFamily: 'Segoe UI, Helvetica, Arial, sans-serif' }}>
+      <header style={{ marginBottom: 32, paddingBottom: 20, borderBottom: '2px solid #e2e8f0' }}>
+        <p style={{ margin: 0, fontSize: 12, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#64748b', fontWeight: 700 }}>MicroMorph Report</p>
+        <h1 style={{ margin: '10px 0 6px', fontSize: 30 }}>Microservice Decomposition Plan</h1>
+        <p style={{ margin: 0, fontSize: 14, color: '#475569' }}>Generated {new Date(plan.generatedAt).toLocaleString()}</p>
+      </header>
+
+      <section style={{ ...sectionStyle, display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 20 }}>
+        <div>
+          <p style={{ margin: 0, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#64748b', fontWeight: 700 }}>Components</p>
+          <p style={{ margin: '8px 0 0', fontSize: 28, fontWeight: 800 }}>{plan.dependencyGraph.length}</p>
+        </div>
+        <div>
+          <p style={{ margin: 0, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#64748b', fontWeight: 700 }}>Services</p>
+          <p style={{ margin: '8px 0 0', fontSize: 28, fontWeight: 800 }}>{plan.boundedContexts.length}</p>
+        </div>
+        <div>
+          <p style={{ margin: 0, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#64748b', fontWeight: 700 }}>Transactional Risks</p>
+          <p style={{ margin: '8px 0 0', fontSize: 28, fontWeight: 800 }}>{plan.transactionalRisks.length}</p>
+        </div>
+      </section>
+
+      <section style={sectionStyle}>
+        <h2 style={{ marginTop: 0, fontSize: 22 }}>Service Boundaries</h2>
+        {plan.boundedContexts.map((context, index) => (
+          <div key={context.suggestedServiceName} style={{ padding: '18px 0', borderTop: index === 0 ? 'none' : '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 20, alignItems: 'flex-start' }}>
+              <div>
+                <h3 style={{ margin: '0 0 6px', fontSize: 18 }}>{context.name}</h3>
+                <p style={{ margin: '0 0 12px', fontSize: 13, color: '#475569', fontWeight: 700 }}>{context.suggestedServiceName}</p>
+              </div>
+              <span style={{ ...badgeStyle, marginRight: 0 }}>{context.riskScore.toUpperCase()} RISK</span>
+            </div>
+            <p style={{ margin: '0 0 14px', fontSize: 13, lineHeight: 1.6, color: '#334155' }}>{context.llmRationale}</p>
+            {context.riskRationale && (
+              <p style={{ margin: '0 0 14px', fontSize: 13, lineHeight: 1.6, color: '#9f1239', fontWeight: 600 }}>{context.riskRationale}</p>
+            )}
+            <div>
+              {context.packages.map((pkg) => (
+                <span key={pkg} style={badgeStyle}>{pkg}</span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <section style={sectionStyle}>
+        <h2 style={{ marginTop: 0, fontSize: 22 }}>Extraction Roadmap</h2>
+        {plan.extractionRoadmap.map((step) => (
+          <div key={`${step.order}-${step.boundedContext}`} style={{ padding: '16px 0', borderTop: step.order === 1 ? 'none' : '1px solid #e2e8f0' }}>
+            <p style={{ margin: 0, fontSize: 13, color: '#64748b', fontWeight: 700 }}>Step {step.order}</p>
+            <h3 style={{ margin: '6px 0', fontSize: 18 }}>{step.boundedContext}</h3>
+            <p style={{ margin: '0 0 10px', fontSize: 13, color: '#475569' }}>Estimated effort: {step.estimatedEffort}</p>
+            <p style={{ margin: 0, fontSize: 13, color: '#334155' }}>Patterns: {step.patternRecommendations.join(', ') || 'None'}</p>
+            {step.blockers.length > 0 && (
+              <p style={{ margin: '10px 0 0', fontSize: 13, color: '#9f1239' }}>Blockers: {step.blockers.join(', ')}</p>
+            )}
+          </div>
+        ))}
+      </section>
+
+      <section style={sectionStyle}>
+        <h2 style={{ marginTop: 0, fontSize: 22 }}>Transactional Risks</h2>
+        {plan.transactionalRisks.length === 0 ? (
+          <p style={{ margin: 0, fontSize: 13, color: '#334155' }}>No cross-domain transactional risks detected.</p>
+        ) : (
+          plan.transactionalRisks.map((risk, index) => (
+            <div key={`${risk.description}-${index}`} style={{ padding: '16px 0', borderTop: index === 0 ? 'none' : '1px solid #e2e8f0' }}>
+              <h3 style={{ margin: '0 0 6px', fontSize: 18 }}>{risk.description}</h3>
+              <p style={{ margin: '0 0 10px', fontSize: 13, color: '#334155', lineHeight: 1.6 }}>{risk.explanation}</p>
+              <p style={{ margin: '0 0 6px', fontSize: 13, color: '#475569' }}>Domains: {risk.affectedDomains.join(', ')}</p>
+              <p style={{ margin: 0, fontSize: 13, color: '#475569' }}>Classes: {risk.affectedClasses.join(', ')}</p>
+            </div>
+          ))
+        )}
+      </section>
+    </div>
+  );
+}
+
 function ServiceNav({ contexts, activeIdx, onSelect }: {
   contexts: BoundedContext[];
   activeIdx: number;
@@ -195,6 +298,7 @@ export function ReportView({ plan, onNewAnalysis }: { plan: DecompositionPlan; o
   const [activeService, setActiveService] = useState(0);
   const [activeTab, setActiveTab]         = useState<'services' | 'roadmap' | 'risks'>('services');
   const reportRef = useRef<HTMLDivElement>(null);
+  const exportRef = useRef<HTMLDivElement>(null);
 
   const handleExportJson = () => {
     const blob = new Blob([JSON.stringify(plan, null, 2)], { type: 'application/json' });
@@ -207,16 +311,33 @@ export function ReportView({ plan, onNewAnalysis }: { plan: DecompositionPlan; o
   };
 
   const handleExportPdf = async () => {
-    if (!reportRef.current) return;
+    if (!exportRef.current) return;
     try {
-      const canvas  = await html2canvas(reportRef.current, { scale: 2 });
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      const pdf     = new jsPDF('p', 'mm', 'a4');
-      const w       = pdf.internal.pageSize.getWidth();
-      pdf.addImage(imgData, 'JPEG', 0, 0, w, (canvas.height * w) / canvas.width);
+      const exportNode = exportRef.current;
+      const canvas = await html2canvas(exportNode, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        windowWidth: exportNode.scrollWidth,
+        windowHeight: exportNode.scrollHeight
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imageHeight = (canvas.height * pageWidth) / canvas.width;
+      let position = 0;
+
+      pdf.addImage(imgData, 'PNG', 0, position, pageWidth, imageHeight);
+      while (position + pageHeight < imageHeight) {
+        position -= pageHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, pageWidth, imageHeight);
+      }
+
       pdf.save('microservice-roadmap.pdf');
-    } catch (e) {
-      alert('PDF export failed. Try Export JSON instead.');
+    } catch {
+      alert('PDF export failed. Try JSON export or re-run the analysis.');
     }
   };
 
@@ -274,7 +395,7 @@ export function ReportView({ plan, onNewAnalysis }: { plan: DecompositionPlan; o
           {onNewAnalysis && (
             <button onClick={onNewAnalysis}
               className="neo-button text-[11px] font-bold uppercase tracking-widest px-4 py-2 rounded-2xl transition-all text-muted-foreground">
-              New Instance
+              Home
             </button>
           )}
           <div className="w-[1px] h-6 bg-border mx-1" />
@@ -284,8 +405,17 @@ export function ReportView({ plan, onNewAnalysis }: { plan: DecompositionPlan; o
           </button>
           <button onClick={handleExportPdf}
             className="neo-button-primary text-[11px] font-bold uppercase tracking-widest px-5 py-2.5 rounded-2xl transition-all">
-            Export Report
+            Export PDF
           </button>
+        </div>
+      </div>
+
+      <div
+        aria-hidden="true"
+        style={{ position: 'absolute', left: '-20000px', top: 0, width: 1100, pointerEvents: 'none' }}
+      >
+        <div ref={exportRef}>
+          <ReportExportDocument plan={plan} />
         </div>
       </div>
 
@@ -319,13 +449,13 @@ export function ReportView({ plan, onNewAnalysis }: { plan: DecompositionPlan; o
                       disabled={activeService === 0}
                       onClick={() => setActiveService(i => i - 1)}
                       className="neo-button text-[10px] font-bold uppercase tracking-widest px-6 py-3 rounded-2xl text-muted-foreground disabled:opacity-30">
-                      ← Sequence Previous
+                      ← Previous Service
                     </button>
                     <button
                       disabled={activeService === plan.boundedContexts.length - 1}
                       onClick={() => setActiveService(i => i + 1)}
                       className="neo-button-primary text-[10px] font-bold uppercase tracking-widest px-6 py-3 rounded-2xl disabled:opacity-30">
-                      Sequence Next →
+                      Next Service →
                     </button>
                   </div>
                 </div>
