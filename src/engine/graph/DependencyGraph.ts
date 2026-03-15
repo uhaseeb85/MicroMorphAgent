@@ -39,10 +39,10 @@ export class DependencyGraphBuilder {
         if (nodes.has(imp)) {
           matchedTarget = imp;
         } else if (imp.endsWith('.*')) {
-          // Wildcard match
-          const pkg = imp.replace('.*', '');
-          // In a precise graph we'd add all classes in that package, but heuristically 
-          // we might just track the package coupling. For GraphNode we only add known nodes.
+          // Wildcard import: resolving all classes in the package requires a symbol table
+          // which isn't available in the browser. This import is intentionally dropped.
+          // The package-level coupling is still captured via co-change data.
+          console.debug(`[DependencyGraph] wildcard import dropped: ${imp} (from ${jc.fullyQualifiedName})`);
         }
 
         if (matchedTarget) {

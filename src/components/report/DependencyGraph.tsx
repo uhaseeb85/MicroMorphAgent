@@ -39,6 +39,7 @@ export function DependencyGraph({ data }: { data: GraphNode[] }) {
     }));
 
     const links: LinkObj[] = [];
+    const seenCoChangePairs = new Set<string>();
     data.forEach(n => {
       n.outboundDeps.forEach(dep => {
         // Only add if target exists
@@ -54,12 +55,17 @@ export function DependencyGraph({ data }: { data: GraphNode[] }) {
       
       n.coChangedWith.forEach(cc => {
         if (data.some(dn => dn.id === cc.targetClass)) {
+          // Deduplicate bidirectional co-change pairs (A→B and B→A both appear in the matrix)
+          const pairKey = [n.id, cc.targetClass].sort().join('||');
+          if (!seenCoChangePairs.has(pairKey)) {
+            seenCoChangePairs.add(pairKey);
             links.push({
                source: n.id,
                target: cc.targetClass,
                isTransactional: false,
                value: cc.frequency * 0.5 // weight co-changes
             });
+          }
         }
       });
     });
@@ -103,7 +109,12 @@ export function DependencyGraph({ data }: { data: GraphNode[] }) {
 
           ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
           ctx.beginPath();
-          ctx.roundRect(node.x - bckgDimensions[0] / 2, node.y - bckgDimensions[1] / 2 - 10, bckgDimensions[0], bckgDimensions[1], 2);
+          // Use roundRect when available (Chrome 99+/FF 112+/Safari 15.4+), fall back to fillRect
+          if (typeof ctx.roundRect === 'function') {
+            ctx.roundRect(node.x - bckgDimensions[0] / 2, node.y - bckgDimensions[1] / 2 - 10, bckgDimensions[0], bckgDimensions[1], 2);
+          } else {
+            ctx.rect(node.x - bckgDimensions[0] / 2, node.y - bckgDimensions[1] / 2 - 10, bckgDimensions[0], bckgDimensions[1]);
+          }
           ctx.fill();
 
           ctx.textAlign = 'center';

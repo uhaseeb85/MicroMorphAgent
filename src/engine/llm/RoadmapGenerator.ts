@@ -68,9 +68,12 @@ ${JSON.stringify(txRiskPayload, null, 2)}`;
       const roadmap = Array.isArray(response.extractionRoadmap) ? response.extractionRoadmap : [];
       const risks = Array.isArray(response.transactionalRisks) ? response.transactionalRisks : [];
       
+      const SEVERITY_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2 };
       return {
         extractionRoadmap: roadmap.sort((a, b) => a.order - b.order),
-        transactionalRisks: risks.sort((a,b) => a.severity === 'critical' ? -1 : 1)
+        transactionalRisks: risks.sort((a, b) =>
+          (SEVERITY_RANK[a.severity] ?? 3) - (SEVERITY_RANK[b.severity] ?? 3)
+        )
       };
     } catch (e: any) {
       console.error("Roadmap generation failed", e);

@@ -62,7 +62,7 @@ Cross-package Imports: ${Array.from(outboundImports).join(', ')}
       const result = await this.llm.generateJson<{ domain: string; role: string; couplingConcerns: string }>(
         systemPrompt, 
         userPrompt, 
-        300
+        800
       );
       return {
         packageName,

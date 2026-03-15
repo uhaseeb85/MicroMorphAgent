@@ -62,10 +62,8 @@ export class CoChangeMatrix {
       return match[2].replace(/\//g, '.');
     }
     
-    // Fallback if structure is non-standard
-    if (path.endsWith('.java')) {
-      return path.split('/').pop()?.replace('.java', '') || null;
-    }
+    // Non-standard path: return null rather than a bare class name that would
+    // collide with FQN-keyed graph nodes and cause incorrect co-change lookups.
     return null;
   }
 }

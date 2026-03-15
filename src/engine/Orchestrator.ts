@@ -32,7 +32,10 @@ export class Orchestrator {
     });
 
     if (this.config.options.analysisMode === 'demo') {
-      return this.runDemo();
+      return this.runDemo().catch((error: any) => {
+        store.setError(error.message || String(error));
+        throw error;
+      });
     }
 
     try {
@@ -86,9 +89,8 @@ export class Orchestrator {
         const file = javaSourceFiles[i];
         const parsed = springParser.parseStringFallback(file.content, file.path, file.repo);
         javaClasses.push(parsed);
-        store.setFileProgress(i + 1, javaSourceFiles.length, file.path);
 
-        // Throttle activity updates to avoid overwhelming the UI
+        // Throttle progress updates to avoid flooding the activity log
         if (i % 10 === 0 || i === javaSourceFiles.length - 1) {
           store.setFileProgress(i + 1, javaSourceFiles.length, file.path);
         }

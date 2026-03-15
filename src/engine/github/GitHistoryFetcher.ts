@@ -27,6 +27,7 @@ export class GitHistoryFetcher {
 
     // 1. Fetch commits list
     let allCommits: any[] = [];
+    let fetchedCount = 0; // use a counter instead of closing over allCommits (which is [] at closure time)
     try {
       allCommits = await this.octokit.paginate(
         this.octokit.repos.listCommits,
@@ -38,10 +39,13 @@ export class GitHistoryFetcher {
           per_page: 100
         },
         (response, done) => {
-          if (response.data.length + allCommits.length >= maxHistory) {
+          if (fetchedCount + response.data.length >= maxHistory) {
             done();
-            return response.data.slice(0, maxHistory - allCommits.length);
+            const remaining = maxHistory - fetchedCount;
+            fetchedCount += remaining;
+            return response.data.slice(0, remaining);
           }
+          fetchedCount += response.data.length;
           return response.data;
         }
       );

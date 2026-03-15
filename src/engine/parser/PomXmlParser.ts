@@ -31,9 +31,10 @@ export class PomXmlParser {
 
     const project = xml.project;
     
-    // Resolve basic identifiers
-    const groupId = project.groupId || project.parent?.groupId || 'unknown.group';
-    const artifactId = project.artifactId || 'unknown-artifact';
+    // Resolve basic identifiers — wrap in String() to guard against parseTagValue:true
+    // coercing numeric-looking values (e.g. <groupId>1234</groupId>) to numbers.
+    const groupId = String(project.groupId || project.parent?.groupId || 'unknown.group');
+    const artifactId = String(project.artifactId || 'unknown-artifact');
     
     // Multi-module parse
     let modules: string[] = [];
