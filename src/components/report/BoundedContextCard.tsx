@@ -12,18 +12,17 @@ export function BoundedContextCard({ context }: { context: BoundedContext }) {
                         'text-rose-600 bg-rose-50 border-rose-100';
 
   return (
-    <div className="rounded-2xl overflow-hidden flex flex-col transition-all hover:shadow-xl border bg-white"
-         style={{ borderColor: 'hsl(214 20% 90%)' }}>
+    <div className="neo-panel rounded-[2rem] overflow-hidden flex flex-col transition-all hover:scale-[1.01]">
       
       {/* Header */}
-      <div className="px-6 pt-6 pb-4 bg-slate-50/30">
+      <div className="px-6 pt-6 pb-4 bg-[hsl(var(--background)/0.24)]">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="min-w-0 space-y-1">
-            <h3 className="text-xl font-bold tracking-tighter text-slate-900 truncate">
+            <h3 className="text-xl font-bold tracking-tighter text-foreground truncate">
               {context.name}
             </h3>
             <div className="flex items-center gap-2">
-                <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded border bg-white text-slate-500 border-slate-200">
+                <span className="neo-badge font-mono text-[10px] font-bold px-2.5 py-1 rounded-full text-muted-foreground">
                     {context.suggestedServiceName}
                 </span>
             </div>
@@ -42,8 +41,8 @@ export function BoundedContextCard({ context }: { context: BoundedContext }) {
           ].map(s => (
             <div key={s.label} className="flex items-center gap-1.5">
                 <span className="text-xs">{s.icon}</span>
-                <span className="text-[10px] font-bold text-slate-900">{s.value}</span>
-                <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400">{s.label}</span>
+                <span className="text-[10px] font-bold text-foreground">{s.value}</span>
+                <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{s.label}</span>
             </div>
           ))}
         </div>
@@ -51,7 +50,7 @@ export function BoundedContextCard({ context }: { context: BoundedContext }) {
 
       {/* Rationale */}
       <div className="px-6 py-4">
-        <p className="text-sm font-medium leading-relaxed text-slate-500 line-clamp-2">
+        <p className="text-sm font-medium leading-relaxed text-foreground/75 line-clamp-2">
           {context.llmRationale}
         </p>
       </div>
@@ -60,12 +59,12 @@ export function BoundedContextCard({ context }: { context: BoundedContext }) {
       {context.entities.length > 0 && (
         <div className="px-6 pb-4 flex flex-wrap gap-1.5">
           {context.entities.slice(0, 3).map((e, i) => (
-            <span key={i} className="text-[9px] font-mono font-bold px-2 py-0.5 rounded border bg-slate-50 text-slate-400 border-slate-100">
+            <span key={i} className="neo-badge text-[9px] font-mono font-bold px-2 py-0.5 rounded-lg text-muted-foreground">
               {e}
             </span>
           ))}
           {context.entities.length > 3 && (
-            <span className="text-[9px] font-bold uppercase tracking-widest text-slate-300 flex items-center">
+            <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/70 flex items-center">
               +{context.entities.length - 3} MORE
             </span>
           )}
@@ -74,20 +73,20 @@ export function BoundedContextCard({ context }: { context: BoundedContext }) {
 
       {/* Module Structure expand toggle */}
       {context.proposedModuleStructure && (
-        <div className="mt-auto border-t" style={{ borderColor: 'hsl(214 20% 92%)' }}>
+        <div className="mt-auto border-t neo-divider">
           <button
             onClick={() => setExpanded(v => !v)}
-            className="w-full px-6 py-4 text-[10px] font-bold uppercase tracking-widest flex items-center justify-between transition-colors bg-white hover:bg-slate-50 text-slate-500"
+            className="w-full px-6 py-4 text-[10px] font-bold uppercase tracking-widest flex items-center justify-between transition-colors bg-transparent hover:bg-background/25 text-muted-foreground"
           >
             <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-slate-900" />
+                <div className="w-1.5 h-1.5 rounded-full bg-foreground" />
                 {expanded ? 'Hide' : 'Examine'} Blueprint
             </div>
             <span className="text-[10px] opacity-30">{expanded ? '▲' : '▼'}</span>
           </button>
 
           {expanded && (
-            <div className="px-4 pb-6 bg-slate-50/20">
+            <div className="px-4 pb-6 bg-background/10">
               <ModuleStructureView structure={context.proposedModuleStructure} />
             </div>
           )}

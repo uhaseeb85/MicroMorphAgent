@@ -4,73 +4,69 @@ import { ProgressBar } from './ProgressBar';
 import { StatCard } from './StatCard';
 import { ActivityLog } from './ActivityLog';
 import { PhaseTimeline } from './PhaseTimeline';
+import { ThemeToggle } from '../layout/ThemeToggle';
 
 interface AnalysisDashboardProps {
     onEditConfig: () => void;
     onCancel: () => void;
+    resultsReady?: boolean;
+    onViewResults?: () => void;
 }
 
-export function AnalysisDashboard({ onEditConfig, onCancel }: AnalysisDashboardProps) {
-    const {
-        phase,
-        progressMessage,
-        filesProcessed,
-        totalFiles,
-        commitsFetched,
-        llmCallsMade,
-        llmCallsTotal,
-        dependencyNodes,
-        coChangePairs,
-        activityLog
-    } = useAnalysisStore();
+export function AnalysisDashboard({ onEditConfig, onCancel, resultsReady = false, onViewResults }: AnalysisDashboardProps) {
+    const phase = useAnalysisStore((state) => state.phase);
+    const progressMessage = useAnalysisStore((state) => state.progressMessage);
+    const filesProcessed = useAnalysisStore((state) => state.filesProcessed);
+    const totalFiles = useAnalysisStore((state) => state.totalFiles);
+    const commitsFetched = useAnalysisStore((state) => state.commitsFetched);
+    const llmCallsMade = useAnalysisStore((state) => state.llmCallsMade);
+    const llmCallsTotal = useAnalysisStore((state) => state.llmCallsTotal);
+    const dependencyNodes = useAnalysisStore((state) => state.dependencyNodes);
+    const coChangePairs = useAnalysisStore((state) => state.coChangePairs);
+    const activityLog = useAnalysisStore((state) => state.activityLog);
 
     // Determine active states based on current phase
-    const isPhase1 = phase === 1;
     const isPhase2 = phase === 2;
     const isPhase3 = phase === 3;
     const isPhase4 = phase === 4;
     const isPhase5 = phase === 5;
 
     return (
-        <div className="min-h-screen" style={{ background: 'hsl(210 20% 98%)' }}>
+        <div className="neo-shell min-h-screen text-foreground">
             {/* Header */}
-            <header className="border-b bg-white">
+            <header className="border-b neo-divider bg-transparent">
                 <div className="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div
-                            className="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm"
-                            style={{ background: 'hsl(222 25% 15%)' }}
-                        >
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <div className="neo-button-primary w-10 h-10 rounded-2xl flex items-center justify-center">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <polyline points="16 18 22 12 16 6" />
                                 <polyline points="8 6 2 12 8 18" />
                             </svg>
                         </div>
                         <div>
-                            <h1 className="text-lg font-bold tracking-tight" style={{ color: 'hsl(222 25% 15%)' }}>
+                            <h1 className="text-lg font-bold tracking-tight text-foreground">
                                 Micromorph
                             </h1>
                             <div className="flex items-center gap-2">
-                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'hsl(215 15% 45%)' }}>
-                                    Live Analysis Engine
+                                <div className={`w-1.5 h-1.5 rounded-full ${resultsReady ? 'bg-sky-500' : 'bg-emerald-500 animate-pulse'}`} />
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                                    {resultsReady ? 'Awaiting Review Confirmation' : 'Live Analysis Engine'}
                                 </span>
                             </div>
                         </div>
                     </div>
 
                     <div className="flex items-center gap-3">
+                        <ThemeToggle />
                         <button
                             onClick={onEditConfig}
-                            className="text-xs font-bold uppercase tracking-widest px-5 py-2.5 rounded-xl transition-all hover:bg-slate-50 border shadow-sm"
-                            style={{ background: 'white', color: 'hsl(222 25% 15%)', borderColor: 'hsl(214 20% 90%)' }}
+                            className="neo-button text-xs font-bold uppercase tracking-widest px-5 py-2.5 rounded-2xl transition-all text-foreground"
                         >
                             Edit Config
                         </button>
                         <button
                             onClick={onCancel}
-                            className="text-xs font-bold uppercase tracking-widest px-5 py-2.5 rounded-xl transition-all hover:bg-red-50"
-                            style={{ color: 'hsl(0 80% 60%)' }}
+                            className="neo-button text-xs font-bold uppercase tracking-widest px-5 py-2.5 rounded-2xl transition-all text-rose-500 dark:text-rose-300"
                         >
                             Stop
                         </button>
@@ -82,6 +78,39 @@ export function AnalysisDashboard({ onEditConfig, onCancel }: AnalysisDashboardP
             <main className="max-w-6xl mx-auto p-6 space-y-8">
                 {/* Progress Bar Section */}
                 <ProgressBar phase={phase} progressMessage={progressMessage} />
+
+                {resultsReady && (
+                    <div className="neo-panel rounded-[2rem] p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                        <div className="space-y-1.5">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-muted-foreground">
+                                Analysis Complete
+                            </p>
+                            <h2 className="text-2xl font-bold tracking-tight text-foreground">
+                                Results are ready for review.
+                            </h2>
+                            <p className="text-sm text-muted-foreground max-w-2xl">
+                                The analysis has finished successfully. Review the final activity log and open the report when you are ready.
+                            </p>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-3">
+                            <button
+                                type="button"
+                                onClick={onEditConfig}
+                                className="neo-button px-5 py-3 rounded-2xl text-[11px] font-bold uppercase tracking-widest text-muted-foreground"
+                            >
+                                Adjust Configuration
+                            </button>
+                            <button
+                                type="button"
+                                onClick={onViewResults}
+                                className="neo-button-primary px-6 py-3 rounded-2xl text-[11px] font-bold uppercase tracking-widest"
+                            >
+                                View Results
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Stats Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -161,73 +190,6 @@ export function AnalysisDashboard({ onEditConfig, onCancel }: AnalysisDashboardP
                         <PhaseTimeline currentPhase={phase} />
                     </div>
                 </div>
-
-                {/* Current Operation Detail */}
-                {(filesProcessed > 0 || llmCallsMade > 0) && (
-                    <div
-                        className="rounded-2xl p-5"
-                        style={{ background: 'white', border: '1px solid hsl(230 20% 88%)' }}
-                    >
-                        <div className="flex items-center gap-2 mb-4">
-                            <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'hsl(222 25% 15%)' }} />
-                            <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'hsl(215 15% 45%)' }}>
-                                Current Operation
-                            </span>
-                        </div>
-
-                        <div className="space-y-4">
-                            {progressMessage && (
-                                <div className="flex items-center gap-4 p-4 rounded-xl border bg-slate-50/50" style={{ borderColor: 'hsl(214 20% 90%)' }}>
-                                    <div
-                                        className="w-2 h-2 rounded-full animate-ping"
-                                        style={{ background: 'hsl(222 25% 15%)' }}
-                                    />
-                                    <span className="text-sm font-semibold tracking-tight" style={{ color: 'hsl(222 25% 15%)' }}>
-                                        {progressMessage}
-                                    </span>
-                                </div>
-                            )}
-
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                {totalFiles > 0 && (
-                                    <div className="p-3 rounded-xl" style={{ background: 'hsl(230 30% 98%)', border: '1px solid hsl(230 20% 90%)' }}>
-                                        <p className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'hsl(230 15% 55%)' }}>Files</p>
-                                        <p className="text-sm font-mono font-semibold" style={{ color: 'hsl(230 20% 25%)' }}>
-                                            {filesProcessed.toLocaleString()} / {totalFiles.toLocaleString()}
-                                        </p>
-                                    </div>
-                                )}
-
-                                {commitsFetched > 0 && (
-                                    <div className="p-3 rounded-xl" style={{ background: 'hsl(230 30% 98%)', border: '1px solid hsl(230 20% 90%)' }}>
-                                        <p className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'hsl(230 15% 55%)' }}>Commits</p>
-                                        <p className="text-sm font-mono font-semibold" style={{ color: 'hsl(230 20% 25%)' }}>
-                                            {commitsFetched.toLocaleString()}
-                                        </p>
-                                    </div>
-                                )}
-
-                                {llmCallsTotal > 0 && (
-                                    <div className="p-3 rounded-xl" style={{ background: 'hsl(230 30% 98%)', border: '1px solid hsl(230 20% 90%)' }}>
-                                        <p className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'hsl(230 15% 55%)' }}>LLM Progress</p>
-                                        <p className="text-sm font-mono font-semibold" style={{ color: 'hsl(230 20% 25%)' }}>
-                                            {llmCallsMade} / {llmCallsTotal}
-                                        </p>
-                                    </div>
-                                )}
-
-                                {dependencyNodes > 0 && (
-                                    <div className="p-3 rounded-xl" style={{ background: 'hsl(230 30% 98%)', border: '1px solid hsl(230 20% 90%)' }}>
-                                        <p className="text-[10px] uppercase tracking-wider mb-1" style={{ color: 'hsl(230 15% 55%)' }}>Graph</p>
-                                        <p className="text-sm font-mono font-semibold" style={{ color: 'hsl(230 20% 25%)' }}>
-                                            {dependencyNodes.toLocaleString()} nodes
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                )}
             </main>
         </div>
     );

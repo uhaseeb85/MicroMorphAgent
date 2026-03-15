@@ -10,7 +10,7 @@ import { Summarizer, PackageSummary } from './llm/Summarizer';
 import { BoundedContextAnalyzer } from './llm/BoundedContextAnalyzer';
 import { RoadmapGenerator, RoadmapResponse } from './llm/RoadmapGenerator';
 import { ModuleStructureGenerator } from './llm/ModuleStructureGenerator';
-import { AnalysisConfig, DecompositionPlan, JavaClass, BoundedContext } from '../types';
+import { AnalysisConfig, DecompositionPlan, JavaClass, BoundedContext, GraphNode, ModuleStructure } from '../types';
 
 export class Orchestrator {
   private config: AnalysisConfig;
@@ -21,6 +21,7 @@ export class Orchestrator {
 
   async runAnalysis(): Promise<DecompositionPlan> {
     const store = useAnalysisStore.getState();
+    const isStaticMode = this.config.options.analysisMode === 'static';
     store.setAnalyzing(true);
 
     // Debug: Log the config being used
@@ -46,11 +47,11 @@ export class Orchestrator {
       const coChangeMatrixBuilder = new CoChangeMatrix();
       const graphBuilder = new DependencyGraphBuilder();
 
-      const llmClient = new LLMClient(this.config);
-      const summarizer = new Summarizer(llmClient);
-      const contextAnalyzer = new BoundedContextAnalyzer(llmClient);
-      const roadmapGenerator = new RoadmapGenerator(llmClient);
-      const moduleStructureGen = new ModuleStructureGenerator(llmClient);
+      const llmClient = isStaticMode ? null : new LLMClient(this.config);
+      const summarizer = llmClient ? new Summarizer(llmClient) : null;
+      const contextAnalyzer = llmClient ? new BoundedContextAnalyzer(llmClient) : null;
+      const roadmapGenerator = llmClient ? new RoadmapGenerator(llmClient) : null;
+      const moduleStructureGen = llmClient ? new ModuleStructureGenerator(llmClient) : null;
 
       // Phase 1: POM parsing
       store.setPhase(1, 'Discovering repository structure and analyzing Maven/Gradle files...');
@@ -123,9 +124,13 @@ export class Orchestrator {
       store.setGraphStats(graphNodes.length, topCoChanges.length);
       store.addActivity({ type: 'graph', message: `Built graph with ${graphNodes.length} nodes and ${graphNodes.reduce((acc, n) => acc + n.outboundDeps.length, 0)} edges`, status: 'success' });
 
-      // Phase 4: LLM Package Summarization (skip in static mode)
       const summaries: PackageSummary[] = [];
-      if (this.config.options.analysisMode !== 'static') {
+      let boundedContexts: BoundedContext[] = [];
+      let roadmapAndRisks: RoadmapResponse;
+      let enrichedContexts: BoundedContext[] = [];
+
+      if (!isStaticMode) {
+        // Phase 4: LLM Package Summarization
         store.setPhase(4, 'Generating semantic package summaries via LLM...');
 
         const packageMap = new Map<string, JavaClass[]>();
@@ -146,7 +151,7 @@ export class Orchestrator {
           store.setPackageProgress(i - 1, packageMap.size, pkgName);
           store.setLLMProgress(i - 1, packageMap.size, pkgName);
 
-          const summary = await summarizer.summarizePackage(pkgName, classes);
+          const summary = await summarizer!.summarizePackage(pkgName, classes);
           summaries.push(summary);
 
           store.setPackageProgress(i, packageMap.size, pkgName);
@@ -155,63 +160,57 @@ export class Orchestrator {
         }
 
         store.addActivity({ type: 'llm', message: `Completed ${packageMap.size} LLM package summaries`, status: 'success' });
+        // Phase 5: Decomposition Reasoning
+        store.setPhase(5, 'Identifying Microservice Bounded Contexts...');
+        store.addActivity({ type: 'llm', message: 'Identifying bounded contexts from package summaries...', status: 'pending' });
+
+        boundedContexts = await contextAnalyzer!.analyze(summaries, topCoChanges, graphNodes, this.config.options.granularity);
+        store.addActivity({ type: 'llm', message: `Identified ${boundedContexts.length} bounded contexts`, status: 'success' });
+
+        store.setPhase(5, 'Generating Extraction Roadmap...');
+        store.addActivity({ type: 'llm', message: 'Generating extraction roadmap and transactional risk analysis...', status: 'pending' });
+
+        roadmapAndRisks = await roadmapGenerator!.generate(boundedContexts, graphNodes);
+        store.addActivity({ type: 'llm', message: `Generated roadmap with ${roadmapAndRisks.extractionRoadmap.length} steps and ${roadmapAndRisks.transactionalRisks.length} risks`, status: 'success' });
+
+        // Phase 5b: Generate per-service module structures
+        store.setPhase(5, 'Generating module structures for each microservice...');
+        store.addActivity({ type: 'llm', message: 'Generating Maven module structures for each service...', status: 'pending' });
+        store.setLLMProgress(0, boundedContexts.length, 'Generating module structures...');
+
+        enrichedContexts = await Promise.all(
+          boundedContexts.map(async (ctx, idx) => {
+            try {
+              store.setLLMProgress(idx, boundedContexts.length, ctx.suggestedServiceName);
+              const structure = await moduleStructureGen!.generateForContext(ctx, baseGroupId);
+              store.addActivity({ type: 'llm', message: `Generated structure for ${ctx.suggestedServiceName}`, status: 'success' });
+              return { ...ctx, proposedModuleStructure: structure };
+            } catch (e) {
+              store.addActivity({ type: 'info', message: `Skipped module structure for ${ctx.suggestedServiceName}`, status: 'success' });
+              return ctx;
+            }
+          })
+        );
+        store.setLLMProgress(boundedContexts.length, boundedContexts.length, '');
       } else {
-        store.setPhase(4, 'Static mode: skipping LLM package summarization...');
-        store.addActivity({ type: 'info', message: 'Static mode enabled - skipping LLM analysis', status: 'success' });
+        store.setPhase(4, 'Static mode: deriving package boundaries from code structure...');
+        store.addActivity({ type: 'info', message: 'Static mode enabled - using structural analysis only (no LLM calls)', status: 'pending' });
+
+        boundedContexts = this.generateStaticBoundedContexts(javaClasses, graphNodes);
+        store.addActivity({ type: 'graph', message: `Derived ${boundedContexts.length} bounded contexts from namespaces and dependencies`, status: 'success' });
+
+        store.setPhase(5, 'Static mode: generating heuristic extraction roadmap...');
+        store.addActivity({ type: 'graph', message: 'Estimating extraction order and transactional risks from dependency signals...', status: 'pending' });
+        roadmapAndRisks = this.generateHeuristicRoadmap(boundedContexts, graphNodes);
+        store.addActivity({ type: 'graph', message: `Generated heuristic roadmap with ${roadmapAndRisks.extractionRoadmap.length} steps and ${roadmapAndRisks.transactionalRisks.length} risks`, status: 'success' });
+
+        store.setPhase(5, 'Static mode: generating module blueprints...');
+        enrichedContexts = boundedContexts.map((ctx) => ({
+          ...ctx,
+          proposedModuleStructure: this.generateStaticModuleStructure(ctx, baseGroupId)
+        }));
+        store.addActivity({ type: 'graph', message: `Generated ${enrichedContexts.length} heuristic module blueprints`, status: 'success' });
       }
-
-      // Phase 5: Decomposition Reasoning
-      store.setPhase(5, 'Identifying Microservice Bounded Contexts...');
-      store.addActivity({ type: 'llm', message: 'Identifying bounded contexts from package summaries...', status: 'pending' });
-
-      let boundedContexts: BoundedContext[] = [];
-      try {
-        boundedContexts = await contextAnalyzer.analyze(summaries, topCoChanges, graphNodes, this.config.options.granularity);
-      } catch (e) {
-        if (this.config.options.analysisMode === 'static') {
-          console.warn('LLM Bounded Context Analysis failed in static mode, using fallback:', e);
-          boundedContexts = this.generateStaticBoundedContexts(javaClasses);
-        } else {
-          throw e;
-        }
-      }
-      store.addActivity({ type: 'llm', message: `Identified ${boundedContexts.length} bounded contexts`, status: 'success' });
-
-      store.setPhase(5, 'Generating Extraction Roadmap...');
-      store.addActivity({ type: 'llm', message: 'Generating extraction roadmap and transactional risk analysis...', status: 'pending' });
-
-      let roadmapAndRisks: RoadmapResponse;
-      try {
-        roadmapAndRisks = await roadmapGenerator.generate(boundedContexts, graphNodes);
-      } catch (e) {
-        if (this.config.options.analysisMode === 'static') {
-          console.warn('Roadmap generation failed in static mode, using fallback:', e);
-          roadmapAndRisks = this.generateHeuristicRoadmap(boundedContexts);
-        } else {
-          throw e;
-        }
-      }
-      store.addActivity({ type: 'llm', message: `Generated roadmap with ${roadmapAndRisks.extractionRoadmap.length} steps and ${roadmapAndRisks.transactionalRisks.length} risks`, status: 'success' });
-
-      // Phase 5b: Generate per-service module structures
-      store.setPhase(5, 'Generating module structures for each microservice...');
-      store.addActivity({ type: 'llm', message: 'Generating Maven module structures for each service...', status: 'pending' });
-      store.setLLMProgress(0, boundedContexts.length, 'Generating module structures...');
-
-      const enrichedContexts = await Promise.all(
-        boundedContexts.map(async (ctx, idx) => {
-          try {
-            store.setLLMProgress(idx, boundedContexts.length, ctx.suggestedServiceName);
-            const structure = await moduleStructureGen.generateForContext(ctx, baseGroupId);
-            store.addActivity({ type: 'llm', message: `Generated structure for ${ctx.suggestedServiceName}`, status: 'success' });
-            return { ...ctx, proposedModuleStructure: structure };
-          } catch (e) {
-            store.addActivity({ type: 'info', message: `Skipped module structure for ${ctx.suggestedServiceName}`, status: 'success' });
-            return ctx;
-          }
-        })
-      );
-      store.setLLMProgress(boundedContexts.length, boundedContexts.length, '');
 
       const plan: DecompositionPlan = {
         boundedContexts: enrichedContexts,
@@ -244,20 +243,20 @@ export class Orchestrator {
     // Phase 1
     store.setPhase(1, 'Discovering repository structure and analyzing Maven/Gradle files...');
     store.addActivity({ type: 'pom', message: 'Fetching pom.xml from repository...', status: 'pending' });
-    await sleep(800);
+    await sleep(1400);
     store.addActivity({ type: 'pom', message: 'Parsed POM: spring-petclinic (org.springframework.samples)', status: 'success' });
 
     // Phase 2
     store.setPhase(2, 'Fetching Java source files via GitHub API...');
     store.addActivity({ type: 'git', message: 'Scanning repository for Java files...', status: 'pending' });
-    await sleep(600);
+    await sleep(1000);
     const mockFilesCount = 42;
     store.addActivity({ type: 'git', message: `Found ${mockFilesCount} Java files`, status: 'success' });
     store.setFileProgress(0, mockFilesCount, '');
     for (let i = 0; i < mockFilesCount; i++) {
        if (i % 5 === 0) {
          store.setFileProgress(i, mockFilesCount, `petclinic/model/Owner${i}.java`);
-         await sleep(50);
+         await sleep(180);
        }
     }
     store.setFileProgress(mockFilesCount, mockFilesCount, 'petclinic/PetClinicApplication.java');
@@ -265,15 +264,15 @@ export class Orchestrator {
     // Phase 3
     store.setPhase(3, 'Fetching Git Commit History for Co-Change Analysis...');
     store.addActivity({ type: 'git', message: 'Fetching last 300 commits...', status: 'pending' });
-    await sleep(1000);
+    await sleep(1500);
     store.setGitProgress(300);
     store.addActivity({ type: 'git', message: 'Fetched 300 commits for analysis', status: 'success' });
     store.setPhase(3, 'Constructing Co-Change Matrix...');
-    await sleep(500);
+    await sleep(900);
     store.setGraphStats(0, 12);
     store.addActivity({ type: 'graph', message: 'Identified 12 strong co-change patterns', status: 'success' });
     store.setPhase(3, 'Building Unified Dependency Graph...');
-    await sleep(400);
+    await sleep(850);
     store.setGraphStats(42, 12);
     store.addActivity({ type: 'graph', message: 'Built graph with 42 nodes and 156 edges', status: 'success' });
 
@@ -284,24 +283,24 @@ export class Orchestrator {
     store.setLLMProgress(0, demoPackages.length, '');
     for(let i=0; i<demoPackages.length; i++) {
       store.setLLMProgress(i, demoPackages.length, `Summarizing ${demoPackages[i]}...`);
-      await sleep(1200);
+      await sleep(1800);
       store.addActivity({ type: 'llm', message: `Analyzed package: ${demoPackages[i]}`, status: 'success' });
       store.setPackageProgress(i+1, demoPackages.length, demoPackages[i]);
     }
 
     // Phase 5
     store.setPhase(5, 'Identifying Microservice Bounded Contexts...');
-    await sleep(1500);
+    await sleep(1900);
     store.addActivity({ type: 'llm', message: 'Identified 3 bounded contexts: Customer, Veterinary, Clinic', status: 'success' });
     
     store.setPhase(5, 'Generating Extraction Roadmap...');
-    await sleep(1000);
+    await sleep(1400);
     store.addActivity({ type: 'llm', message: 'Generated roadmap with 3 steps and 2 transactional risks', status: 'success' });
 
     store.setPhase(5, 'Generating module structures for each microservice...');
-    await sleep(800);
+    await sleep(1200);
     store.addActivity({ type: 'llm', message: 'Generated Maven module structures for Customer Service', status: 'success' });
-    await sleep(500);
+    await sleep(900);
     store.addActivity({ type: 'llm', message: 'Generated Maven module structures for Vet Service', status: 'success' });
 
     // Final Plan
@@ -386,46 +385,207 @@ export class Orchestrator {
     return plan;
   }
 
-  private generateStaticBoundedContexts(javaClasses: JavaClass[]): BoundedContext[] {
-    const packageGroups = new Map<string, string[]>();
-    for (const jc of javaClasses) {
-      // Group by the first 3 segments of the package name (e.g., com.example.v1)
-      const parts = jc.packageName.split('.');
-      const topLevel = parts.length > 3 ? parts.slice(0, 3).join('.') : jc.packageName;
-      const pkg = packageGroups.get(topLevel) || [];
-      pkg.push(jc.packageName);
-      packageGroups.set(topLevel, Array.from(new Set(pkg)));
+  private generateStaticBoundedContexts(javaClasses: JavaClass[], graphNodes: GraphNode[]): BoundedContext[] {
+    const groupedClasses = new Map<string, JavaClass[]>();
+    const nodeById = new Map(graphNodes.map((node) => [node.id, node]));
+
+    for (const javaClass of javaClasses) {
+      const groupName = this.getStaticGroupName(javaClass.packageName);
+      const existing = groupedClasses.get(groupName) || [];
+      existing.push(javaClass);
+      groupedClasses.set(groupName, existing);
     }
 
-    return Array.from(packageGroups.entries()).map(([name, pkgs]) => {
-      const serviceName = (name.split('.').pop() || name).toLowerCase();
+    return Array.from(groupedClasses.entries()).map(([groupName, classes]) => {
+      const classIds = new Set(classes.map((javaClass) => javaClass.fullyQualifiedName));
+      const packages = Array.from(new Set(classes.map((javaClass) => javaClass.packageName))).sort();
+      const entities = Array.from(new Set(
+        classes
+          .filter((javaClass) => javaClass.layer === 'entity')
+          .map((javaClass) => javaClass.fullyQualifiedName.split('.').pop() || javaClass.fullyQualifiedName)
+      )).sort();
+      const apis = Array.from(new Set(
+        classes
+          .filter((javaClass) => javaClass.layer === 'controller')
+          .map((javaClass) => `Controller: ${javaClass.fullyQualifiedName.split('.').pop() || javaClass.fullyQualifiedName}`)
+      ));
+
+      const inboundDeps = new Set<string>();
+      const outboundDeps = new Set<string>();
+      const sharedTableConflicts = new Set<string>();
+
+      for (const javaClass of classes) {
+        const node = nodeById.get(javaClass.fullyQualifiedName);
+        if (!node) continue;
+
+        for (const target of node.outboundDeps) {
+          if (!classIds.has(target)) {
+            outboundDeps.add(target);
+          }
+        }
+
+        for (const source of node.inboundDeps) {
+          if (!classIds.has(source)) {
+            inboundDeps.add(source);
+          }
+        }
+
+        if (node.transactionalBoundary && node.outboundDeps.some((target) => !classIds.has(target))) {
+          sharedTableConflicts.add(javaClass.fullyQualifiedName.split('.').pop() || javaClass.fullyQualifiedName);
+        }
+      }
+
+      const riskScore = this.getStaticRiskScore(inboundDeps.size, outboundDeps.size, sharedTableConflicts.size);
+      const displayName = groupName.split('.').pop() || groupName;
+      const serviceName = `${displayName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-service`;
+
       return {
-        name: name.split('.').pop() || name,
-        suggestedServiceName: `${serviceName}-service`,
-        packages: pkgs,
-        entities: [],
-        apis: [],
-        inboundDependencyCount: 0,
-        outboundDependencyCount: 0,
-        sharedTableConflicts: [],
-        riskScore: 'low' as const,
-        riskRationale: 'Generated via static package grouping (LLM fallback/static mode).',
-        llmRationale: 'Packages were grouped based on shared namespace prefix because deep semantic analysis was skipped or unavailable.'
+        name: displayName,
+        suggestedServiceName: serviceName,
+        packages,
+        entities,
+        apis,
+        inboundDependencyCount: inboundDeps.size,
+        outboundDependencyCount: outboundDeps.size,
+        sharedTableConflicts: Array.from(sharedTableConflicts).sort(),
+        riskScore,
+        riskRationale: sharedTableConflicts.size > 0
+          ? 'Transactional or tightly coupled classes were detected crossing package-group boundaries.'
+          : `Derived from structural coupling signals: ${inboundDeps.size} inbound and ${outboundDeps.size} outbound cross-context dependencies.`,
+        llmRationale: 'Generated from package structure, annotations, controller/entity detection, and dependency graph signals without semantic LLM analysis.'
       };
-    });
+    }).sort((left, right) => left.name.localeCompare(right.name));
   }
 
-  private generateHeuristicRoadmap(boundedContexts: BoundedContext[]): RoadmapResponse {
+  private generateHeuristicRoadmap(boundedContexts: BoundedContext[], graphNodes: GraphNode[]): RoadmapResponse {
+    const contextByClass = new Map<string, BoundedContext>();
+    for (const context of boundedContexts) {
+      for (const pkg of context.packages) {
+        for (const node of graphNodes) {
+          if (node.packageName === pkg || node.packageName.startsWith(`${pkg}.`)) {
+            contextByClass.set(node.id, context);
+          }
+        }
+      }
+    }
+
+    const transactionalRisks = graphNodes
+      .filter((node) => node.transactionalBoundary)
+      .map((node) => {
+        const sourceContext = contextByClass.get(node.id);
+        const affectedDomains = new Set<string>();
+        const affectedClasses = new Set<string>([node.id.split('.').pop() || node.id]);
+
+        for (const target of node.outboundDeps) {
+          const targetContext = contextByClass.get(target);
+          if (sourceContext && targetContext && targetContext.name !== sourceContext.name) {
+            affectedDomains.add(sourceContext.name);
+            affectedDomains.add(targetContext.name);
+            affectedClasses.add(target.split('.').pop() || target);
+          }
+        }
+
+        if (affectedDomains.size === 0) {
+          return null;
+        }
+
+        return {
+          description: `Transactional boundary in ${node.id.split('.').pop() || node.id} crosses service boundaries`,
+          affectedClasses: Array.from(affectedClasses),
+          affectedDomains: Array.from(affectedDomains),
+          severity: affectedDomains.size > 2 ? 'high' as const : 'medium' as const,
+          mitigationPattern: 'saga' as const,
+          explanation: 'This risk was derived from static transactional annotations and cross-context dependency edges rather than semantic workflow analysis.'
+        };
+      })
+      .filter((risk): risk is NonNullable<typeof risk> => risk !== null);
+
+    const orderedContexts = [...boundedContexts].sort((left, right) => {
+      const leftScore = this.getRoadmapComplexity(left);
+      const rightScore = this.getRoadmapComplexity(right);
+      if (leftScore !== rightScore) {
+        return leftScore - rightScore;
+      }
+      return left.name.localeCompare(right.name);
+    });
+
     return {
-      extractionRoadmap: boundedContexts.map((ctx, i) => ({
+      extractionRoadmap: orderedContexts.map((ctx, i) => ({
         order: i + 1,
         boundedContext: ctx.name,
-        estimatedEffort: 'weeks',
+        estimatedEffort: this.getStaticEffort(ctx),
         blockers: [],
-        patternRecommendations: ['Strangler Fig Pattern'],
-        sagaRequired: false
+        patternRecommendations: ctx.riskScore === 'high'
+          ? ['Strangler Fig Pattern', 'Outbox Pattern']
+          : ctx.riskScore === 'medium'
+            ? ['Strangler Fig Pattern']
+            : ['Branch by Abstraction'],
+        sagaRequired: transactionalRisks.some((risk) => risk.affectedDomains.includes(ctx.name))
       })),
-      transactionalRisks: []
+      transactionalRisks
     };
+  }
+
+  private generateStaticModuleStructure(context: BoundedContext, baseGroupId: string): ModuleStructure {
+    const artifactId = context.suggestedServiceName;
+    const groupId = `${baseGroupId}.${artifactId.replace(/-service$/, '').replace(/-/g, '.')}`;
+    const basePath = `src/main/java/${groupId.replace(/\./g, '/')}`;
+    const entityFiles = context.entities.map((entity) => `${entity}.java`);
+    const controllerFiles = context.apis.map((api) => api.replace('Controller: ', '')).map((name) => `${name}.java`);
+
+    return {
+      rootArtifactId: artifactId,
+      mavenGroupId: groupId,
+      directories: [
+        { path: `${basePath}/controller`, description: 'REST entrypoints inferred from controller classes', files: controllerFiles },
+        { path: `${basePath}/service`, description: 'Application and domain orchestration services', files: context.entities.map((entity) => `${entity}Service.java`) },
+        { path: `${basePath}/repository`, description: 'Persistence adapters and repositories', files: context.entities.map((entity) => `${entity}Repository.java`) },
+        { path: `${basePath}/domain`, description: 'Domain entities and core value objects', files: entityFiles },
+        { path: `${basePath}/config`, description: 'Service bootstrap and configuration', files: ['ServiceConfig.java'] },
+        { path: 'src/main/resources', description: 'Application configuration', files: ['application.yml'] }
+      ],
+      keyClasses: context.entities.map((entity) => `${groupId}.domain.${entity}`),
+      exposedApis: context.apis.length > 0 ? context.apis : [`GET /api/${artifactId.replace(/-service$/, '')}`],
+      consumedApis: [],
+      databaseSchema: context.entities.length > 0
+        ? `Likely owns ${context.entities.map((entity) => entity.toLowerCase()).join(', ')} data structures.`
+        : 'No obvious entity ownership detected from static analysis.',
+      dockerfileSuggestion: 'FROM eclipse-temurin:21-jre-jammy\nCOPY target/*.jar app.jar\nENTRYPOINT ["java","-jar","/app.jar"]'
+    };
+  }
+
+  private getStaticGroupName(packageName: string): string {
+    const parts = packageName.split('.');
+    return parts.length > 3 ? parts.slice(0, 3).join('.') : packageName;
+  }
+
+  private getStaticRiskScore(inboundCount: number, outboundCount: number, transactionalCount: number): 'low' | 'medium' | 'high' {
+    if (transactionalCount > 0 || outboundCount >= 6 || inboundCount >= 6) {
+      return 'high';
+    }
+    if (outboundCount >= 3 || inboundCount >= 3) {
+      return 'medium';
+    }
+    return 'low';
+  }
+
+  private getRoadmapComplexity(context: BoundedContext): number {
+    return (
+      context.inboundDependencyCount +
+      context.outboundDependencyCount +
+      context.sharedTableConflicts.length * 3 +
+      context.entities.length
+    );
+  }
+
+  private getStaticEffort(context: BoundedContext): 'days' | 'weeks' | 'months' {
+    const complexity = this.getRoadmapComplexity(context);
+    if (complexity >= 12) {
+      return 'months';
+    }
+    if (complexity >= 5) {
+      return 'weeks';
+    }
+    return 'days';
   }
 }

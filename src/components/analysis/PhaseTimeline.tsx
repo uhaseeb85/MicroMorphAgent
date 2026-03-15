@@ -75,10 +75,10 @@ const phases = [
 
 export function PhaseTimeline({ currentPhase }: PhaseTimelineProps) {
     return (
-        <div className="rounded-2xl p-6 border shadow-sm bg-white" style={{ borderColor: 'hsl(214 20% 90%)' }}>
+        <div className="neo-panel rounded-[2rem] p-6">
             <div className="flex items-center gap-2.5 mb-6">
-                <div className="w-1.5 h-4 bg-slate-900 rounded-full" />
-                <span className="text-[11px] font-bold uppercase tracking-widest text-slate-900">
+                <div className="w-1.5 h-4 bg-foreground rounded-full" />
+                <span className="text-[11px] font-bold uppercase tracking-widest text-foreground">
                     Analysis Pipeline
                 </span>
             </div>
@@ -92,26 +92,28 @@ export function PhaseTimeline({ currentPhase }: PhaseTimelineProps) {
                     return (
                         <div key={phase.number} className="relative">
                             <div
-                                className="flex items-center gap-4 p-3 rounded-xl transition-all duration-300"
+                                className="flex items-center gap-4 p-3 rounded-2xl transition-all duration-300"
                                 style={{
-                                    background: isActive ? 'hsl(210 20% 98%)' : 'transparent',
-                                    border: isActive ? '1px solid hsl(214 20% 90%)' : '1px solid transparent'
+                                    background: isActive ? 'var(--surface-subtle)' : 'transparent',
+                                    border: isActive ? '1px solid hsl(var(--border) / 0.8)' : '1px solid transparent',
+                                    boxShadow: isActive ? 'var(--shadow-ambient-soft)' : 'none'
                                 }}
                             >
                                 <div
-                                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all duration-500 shadow-sm"
+                                    className="w-8 h-8 rounded-2xl flex items-center justify-center shrink-0 transition-all duration-500 shadow-sm"
                                     style={{
                                         background: isCompleted
-                                            ? 'hsl(210 20% 96%)'
+                                            ? 'var(--surface-subtle)'
                                             : isActive
-                                                ? 'hsl(222 25% 15%)'
-                                                : 'white',
+                                                ? 'var(--surface-strong)'
+                                                : 'var(--surface-raised)',
                                         color: isCompleted
-                                            ? 'hsl(215 15% 45%)'
+                                            ? 'hsl(var(--muted-foreground))'
                                             : isActive
                                                 ? 'white'
-                                                : 'hsl(215 15% 45%)',
-                                        border: isCompleted || isActive ? 'none' : '1px solid hsl(214 20% 90%)'
+                                                : 'hsl(var(--muted-foreground))',
+                                        border: isCompleted || isActive ? 'none' : '1px solid hsl(var(--border))',
+                                        boxShadow: isCompleted || isActive ? 'var(--shadow-button)' : 'var(--shadow-ambient-soft)'
                                     }}
                                 >
                                     {isCompleted ? (
@@ -125,16 +127,16 @@ export function PhaseTimeline({ currentPhase }: PhaseTimelineProps) {
 
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-sm font-bold tracking-tight" style={{ color: isPending ? 'hsl(215 15% 65%)' : 'hsl(222 25% 15%)' }}>
+                                        <span className="text-sm font-bold tracking-tight" style={{ color: isPending ? 'hsl(var(--muted-foreground))' : 'hsl(var(--foreground))' }}>
                                             {phase.title}
                                         </span>
                                         {isActive && (
-                                            <span className="text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-slate-900 text-white">
+                                            <span className="neo-button-primary text-[8px] font-bold uppercase tracking-widest px-2 py-1 rounded-full">
                                                 Active
                                             </span>
                                         )}
                                     </div>
-                                    <p className="text-[10px] font-medium tracking-tight truncate" style={{ color: isPending ? 'hsl(215 15% 70%)' : 'hsl(215 15% 50%)' }}>
+                                    <p className="text-[10px] font-medium tracking-tight truncate" style={{ color: isPending ? 'hsl(var(--muted-foreground) / 0.8)' : 'hsl(var(--muted-foreground))' }}>
                                         {phase.description}
                                     </p>
                                 </div>
@@ -144,7 +146,7 @@ export function PhaseTimeline({ currentPhase }: PhaseTimelineProps) {
                                 <div
                                     className="absolute left-[27px] w-[2px] h-4 z-0"
                                     style={{
-                                        background: isCompleted ? 'hsl(222 25% 15%)' : 'hsl(214 20% 92%)',
+                                        background: isCompleted ? 'hsl(var(--foreground))' : 'hsl(var(--border))',
                                         top: '40px'
                                     }}
                                 />

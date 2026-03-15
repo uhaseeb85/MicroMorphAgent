@@ -1,6 +1,7 @@
-import React, { useRef, useEffect, useState, useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import type { GraphNode } from '../../types';
+import { useAnalysisStore } from '../../store/analysisStore';
 
 interface NodeObj {
   id: string;
@@ -17,17 +18,32 @@ interface LinkObj {
   value: number;
 }
 
-const LAYER_COLORS: Record<string, string> = {
-  controller: 'hsl(222 47% 11%)', // Deep Slate
-  service:    'hsl(215 25% 40%)', // Muted Slate
-  repository: 'hsl(38 90% 45%)',  // Keep Amber for DB/Persistence but muted
-  entity:     'hsl(0 70% 50%)',   // Keep Red for data model but clear
-  config:     'hsl(252 45% 45%)', // Muted Purple
-  util:       'hsl(215 15% 65%)', // Light Slate
-};
-
 export function DependencyGraph({ data }: { data: GraphNode[] }) {
   const fgRef = useRef<any>(null);
+  const theme = useAnalysisStore((state) => state.theme);
+
+  const themeColors = useMemo(() => {
+    const layerColors: Record<string, string> = {
+      controller: 'var(--graph-node-controller)',
+      service: 'var(--graph-node-service)',
+      repository: 'var(--graph-node-repository)',
+      entity: 'var(--graph-node-entity)',
+      config: 'var(--graph-node-config)',
+      util: 'var(--graph-node-util)'
+    };
+
+    const resolved = Object.fromEntries(
+      Object.entries(layerColors).map(([key, value]) => [key, `hsl(${getComputedStyle(document.documentElement).getPropertyValue(value.replace('var(', '').replace(')', '')).trim()})`])
+    ) as Record<string, string>;
+
+    return {
+      layerColors: resolved,
+      panel: getComputedStyle(document.documentElement).getPropertyValue('--graph-panel').trim(),
+      label: getComputedStyle(document.documentElement).getPropertyValue('--graph-label').trim(),
+      link: getComputedStyle(document.documentElement).getPropertyValue('--graph-link').trim(),
+      transactional: getComputedStyle(document.documentElement).getPropertyValue('--graph-link-transactional').trim()
+    };
+  }, [theme]);
   
   const graphData = useMemo(() => {
     const nodes: NodeObj[] = data.map(n => ({
@@ -56,7 +72,7 @@ export function DependencyGraph({ data }: { data: GraphNode[] }) {
       n.coChangedWith.forEach(cc => {
         if (data.some(dn => dn.id === cc.targetClass)) {
           // Deduplicate bidirectional co-change pairs (A→B and B→A both appear in the matrix)
-          const pairKey = [n.id, cc.targetClass].sort().join('||');
+          const pairKey = [n.id, cc.targetClass].sort((left, right) => left.localeCompare(right)).join('||');
           if (!seenCoChangePairs.has(pairKey)) {
             seenCoChangePairs.add(pairKey);
             links.push({
@@ -74,17 +90,18 @@ export function DependencyGraph({ data }: { data: GraphNode[] }) {
   }, [data]);
 
   return (
-    <div className="border rounded-2xl overflow-hidden bg-slate-50/30 relative shadow-inner aspect-[16/10] w-full" style={{ borderColor: 'hsl(214 20% 90%)' }}>
-      <div className="absolute top-6 left-6 z-10 bg-white/90 backdrop-blur-md border border-slate-200 rounded-xl p-5 shadow-xl">
-         <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
-            <div className="w-1 h-3 bg-slate-300 rounded-full" />
+    <div className="neo-inset rounded-[2rem] overflow-hidden relative aspect-[16/10] w-full">
+      <div className="absolute top-6 left-6 z-10 rounded-2xl p-5 shadow-xl border border-border/60 backdrop-blur-md"
+           style={{ background: themeColors.panel }}>
+         <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-4 flex items-center gap-2">
+            <div className="w-1 h-3 bg-border rounded-full" />
             Layer Topology
          </h4>
          <div className="space-y-2">
-           {Object.entries(LAYER_COLORS).map(([layer, color]) => (
+           {Object.entries(themeColors.layerColors).map(([layer, color]) => (
               <div key={layer} className="flex items-center gap-3">
                 <div className="w-2 h-2 rounded-full shadow-sm" style={{ backgroundColor: color }}></div>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-600">{layer}</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-foreground/80">{layer}</span>
               </div>
            ))}
          </div>
@@ -93,11 +110,12 @@ export function DependencyGraph({ data }: { data: GraphNode[] }) {
         ref={fgRef}
         graphData={graphData}
         nodeLabel="id"
-        nodeColor={(node: any) => LAYER_COLORS[node.layer as string] || LAYER_COLORS.util}
+        backgroundColor="transparent"
+        nodeColor={(node: any) => themeColors.layerColors[node.layer as string] || themeColors.layerColors.util}
         nodeRelSize={6}
         linkWidth={link => (link as any).isTransactional ? 2 : Math.max(0.5, (link as any).value)}
         linkLineDash={link => (link as any).isTransactional ? [4, 4] : null}
-        linkColor={link => (link as any).isTransactional ? 'rgba(225, 29, 72, 0.4)' : 'rgba(71, 85, 105, 0.1)'}
+        linkColor={link => (link as any).isTransactional ? themeColors.transactional : themeColors.link}
         linkDirectionalArrowLength={3.5}
         linkDirectionalArrowRelPos={1}
         nodeCanvasObject={(node: any, ctx, globalScale) => {
@@ -107,7 +125,7 @@ export function DependencyGraph({ data }: { data: GraphNode[] }) {
           const textWidth = ctx.measureText(label).width;
           const bckgDimensions = [textWidth, fontSize].map(n => n + fontSize * 0.4); 
 
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+          ctx.fillStyle = themeColors.label;
           ctx.beginPath();
           // Use roundRect when available (Chrome 99+/FF 112+/Safari 15.4+), fall back to fillRect
           if (typeof ctx.roundRect === 'function') {
@@ -119,18 +137,18 @@ export function DependencyGraph({ data }: { data: GraphNode[] }) {
 
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillStyle = LAYER_COLORS[node.layer as string] || '#000';
+          ctx.fillStyle = themeColors.layerColors[node.layer as string] || '#000';
           ctx.fillText(label, node.x, node.y - 10);
 
           // Node Circle
           ctx.beginPath();
           ctx.arc(node.x, node.y, node.val + 2, 0, 2 * Math.PI, false);
-          ctx.fillStyle = LAYER_COLORS[node.layer as string] || '#000';
+          ctx.fillStyle = themeColors.layerColors[node.layer as string] || '#000';
           ctx.fill();
           
           if (node.transactional) {
             ctx.lineWidth = 1.5;
-            ctx.strokeStyle = 'hsl(349 89% 50%)';
+            ctx.strokeStyle = themeColors.transactional;
             ctx.stroke();
           }
         }}

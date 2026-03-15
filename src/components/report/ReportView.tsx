@@ -5,6 +5,7 @@ import { ExtractionRoadmap } from './ExtractionRoadmap';
 import { TransactionalRiskPanel } from './TransactionalRiskPanel';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { ThemeToggle } from '../layout/ThemeToggle';
 
 function ServiceNav({ contexts, activeIdx, onSelect }: {
   contexts: BoundedContext[];
@@ -12,11 +13,10 @@ function ServiceNav({ contexts, activeIdx, onSelect }: {
   onSelect: (i: number) => void;
 }) {
   return (
-    <nav className="rounded-2xl overflow-hidden sticky top-6 border bg-white shadow-sm" style={{ borderColor: 'hsl(214 20% 90%)' }}>
-      <div className="px-5 py-4 border-b flex items-center gap-2 bg-slate-50"
-           style={{ borderColor: 'hsl(214 20% 92%)' }}>
-        <div className="w-1.5 h-3.5 bg-slate-900 rounded-full" />
-        <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500">
+    <nav className="neo-panel rounded-[2rem] overflow-hidden sticky top-6">
+      <div className="px-5 py-4 border-b neo-divider flex items-center gap-2 bg-transparent">
+        <div className="w-1.5 h-3.5 bg-foreground rounded-full" />
+        <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
           {contexts.length} Core Services
         </span>
       </div>
@@ -32,17 +32,17 @@ function ServiceNav({ contexts, activeIdx, onSelect }: {
                 onClick={() => onSelect(i)}
                 className="w-full text-left px-5 py-3 flex items-center gap-3 text-sm transition-all group"
                 style={activeIdx === i ? {
-                  background: 'hsl(210 20% 98%)',
-                  color: 'hsl(222 25% 15%)',
+                  background: 'var(--surface-subtle)',
+                  color: 'hsl(var(--foreground))',
                   fontWeight: 700
                 } : {
-                  color: 'hsl(215 15% 45%)'
+                  color: 'hsl(var(--muted-foreground))'
                 }}
               >
                 <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${riskColor}`} />
                 <span className="truncate tracking-tight">{ctx.suggestedServiceName}</span>
                 {activeIdx === i && (
-                    <div className="ml-auto w-1 h-4 bg-slate-900 rounded-full" />
+                    <div className="ml-auto w-1 h-4 bg-foreground rounded-full" />
                 )}
               </button>
             </li>
@@ -61,21 +61,21 @@ function ServiceDetail({ context, index, total }: { context: BoundedContext; ind
                         'text-rose-600 bg-rose-50 border-rose-100';
 
   return (
-    <div className="rounded-2xl overflow-hidden border bg-white shadow-sm" style={{ borderColor: 'hsl(214 20% 90%)' }}>
-      <div className="px-8 py-6 border-b bg-slate-50/50" style={{ borderColor: 'hsl(214 20% 92%)' }}>
+    <div className="neo-panel rounded-[2rem] overflow-hidden">
+      <div className="px-8 py-6 border-b neo-divider bg-transparent">
         <div className="flex items-start justify-between gap-6">
           <div className="space-y-1">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
               Service Infrastructure {index + 1} / {total}
             </span>
-            <h2 className="text-3xl font-bold tracking-tighter text-slate-900">
+            <h2 className="text-3xl font-bold tracking-tighter text-foreground">
               {context.name}
             </h2>
             <div className="flex items-center gap-2 mt-2">
-                <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded border bg-white text-slate-600 border-slate-200">
+                <span className="neo-badge font-mono text-[11px] font-bold px-2.5 py-1 rounded-full text-foreground/80">
                     {context.suggestedServiceName}
                 </span>
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest px-2">
+                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest px-2">
                     Internal Target
                 </span>
             </div>
@@ -89,15 +89,15 @@ function ServiceDetail({ context, index, total }: { context: BoundedContext; ind
       <div className="p-8 space-y-10">
         <div className="grid lg:grid-cols-2 gap-10">
             <div>
-              <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
-                <div className="w-1 h-3 bg-slate-300 rounded-full" />
+              <h4 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-4 flex items-center gap-2">
+                <div className="w-1 h-3 bg-border rounded-full" />
                 Contextual Rationale
               </h4>
-              <p className="text-sm leading-relaxed text-slate-600 font-medium">
+              <p className="text-sm leading-relaxed text-foreground/80 font-medium">
                 {context.llmRationale}
               </p>
               {context.riskRationale && (
-                <div className="mt-4 p-4 rounded-xl border border-rose-100 bg-rose-50/50">
+                <div className="mt-4 p-4 rounded-2xl border border-rose-300/30 bg-rose-400/10 dark:bg-rose-400/8">
                     <p className="text-[11px] font-bold text-rose-600 leading-relaxed uppercase tracking-tight">
                         Security & Transactional Boundary Note:
                     </p>
@@ -114,10 +114,10 @@ function ServiceDetail({ context, index, total }: { context: BoundedContext; ind
                 { label: 'Schemas', value: context.entities.length, icon: '🗄️' },
                 { label: 'Endpoints', value: context.apis.length, icon: '🔌' },
               ].map(s => (
-                <div key={s.label} className="rounded-xl p-5 border text-center bg-slate-50/30" style={{ borderColor: 'hsl(214 20% 92%)' }}>
+                <div key={s.label} className="neo-inset rounded-2xl p-5 text-center">
                   <div className="text-xl mb-2">{s.icon}</div>
-                  <div className="font-bold text-2xl text-slate-900 tracking-tighter">{s.value}</div>
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mt-1">{s.label}</div>
+                  <div className="font-bold text-2xl text-foreground tracking-tighter">{s.value}</div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">{s.label}</div>
                 </div>
               ))}
             </div>
@@ -125,13 +125,13 @@ function ServiceDetail({ context, index, total }: { context: BoundedContext; ind
 
         <div className="grid lg:grid-cols-2 gap-10">
             <div>
-              <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
-                <div className="w-1 h-3 bg-slate-300 rounded-full" />
+              <h4 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-4 flex items-center gap-2">
+                <div className="w-1 h-3 bg-border rounded-full" />
                 Package Ownership
               </h4>
               <div className="flex flex-wrap gap-2">
                 {context.packages.map((p, i) => (
-                  <span key={i} className="text-[10px] font-mono font-bold px-2 py-1 rounded border bg-slate-50 text-slate-500 border-slate-200" title={p}>
+                  <span key={i} className="neo-badge text-[10px] font-mono font-bold px-2 py-1 rounded-xl text-muted-foreground" title={p}>
                     {p.split('.').slice(-2).join('.')}
                   </span>
                 ))}
@@ -140,13 +140,13 @@ function ServiceDetail({ context, index, total }: { context: BoundedContext; ind
 
             {context.entities.length > 0 && (
               <div>
-                <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
-                  <div className="w-1 h-3 bg-slate-300 rounded-full" />
+                <h4 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-4 flex items-center gap-2">
+                  <div className="w-1 h-3 bg-border rounded-full" />
                   Domain Entities
                 </h4>
                 <div className="flex flex-wrap gap-2">
                   {context.entities.map((e, i) => (
-                    <span key={i} className="text-[10px] font-mono font-bold px-2 py-1 rounded border bg-white text-slate-600 border-slate-200">
+                    <span key={i} className="neo-badge text-[10px] font-mono font-bold px-2 py-1 rounded-xl text-foreground/80">
                       {e}
                     </span>
                   ))}
@@ -156,7 +156,7 @@ function ServiceDetail({ context, index, total }: { context: BoundedContext; ind
         </div>
 
         {context.sharedTableConflicts.length > 0 && (
-          <div className="rounded-xl p-5 border border-rose-100 bg-rose-50/30">
+          <div className="rounded-2xl p-5 border border-rose-300/25 bg-rose-400/10 dark:bg-rose-400/8">
             <h4 className="text-[11px] font-bold uppercase tracking-widest text-rose-600 mb-3 flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
               Shared Table Convergence Risk
@@ -172,15 +172,15 @@ function ServiceDetail({ context, index, total }: { context: BoundedContext; ind
         )}
 
         <div className="pt-2">
-            <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-6 flex items-center gap-2">
-              <div className="w-1 h-3 bg-slate-300 rounded-full" />
+            <h4 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-6 flex items-center gap-2">
+              <div className="w-1 h-3 bg-border rounded-full" />
               Structural Implementation Blueprint
             </h4>
             {context.proposedModuleStructure ? (
               <ModuleStructureView structure={context.proposedModuleStructure} />
             ) : (
-              <div className="rounded-2xl p-8 text-center border-2 border-dashed border-slate-100 bg-slate-50/30">
-                <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+              <div className="neo-inset rounded-2xl p-8 text-center border-2 border-dashed border-border/70">
+                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                   Blueprint not generated (Static Mode active)
                 </p>
               </div>
@@ -227,24 +227,23 @@ export function ReportView({ plan, onNewAnalysis }: { plan: DecompositionPlan; o
   ];
 
   return (
-    <div className="min-h-screen pb-20 bg-slate-50/50">
+    <div className="neo-shell min-h-screen pb-20 text-foreground">
       {/* Top Bar */}
-      <div className="sticky top-0 z-20 border-b px-8 py-4 flex items-center justify-between gap-6 bg-white shadow-sm"
-           style={{ borderColor: 'hsl(214 20% 90%)' }}>
+      <div className="sticky top-0 z-20 border-b neo-divider px-8 py-4 flex items-center justify-between gap-6 bg-background/70 backdrop-blur-xl">
         <div className="flex items-center gap-4">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-slate-900 border shadow-lg border-slate-800">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <div className="neo-button-primary w-10 h-10 rounded-2xl flex items-center justify-center">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
             </svg>
           </div>
           <div className="space-y-0.5">
-              <h1 className="font-bold text-sm tracking-tight text-slate-900 leading-none">MicroMorph</h1>
+              <h1 className="font-bold text-sm tracking-tight text-foreground leading-none">MicroMorph</h1>
               <div className="flex items-center gap-2">
                   <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">
                     Verification Complete
                   </span>
-                  <div className="w-1 h-1 rounded-full bg-slate-300" />
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                  <div className="w-1 h-1 rounded-full bg-border" />
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                     v1.0.4
                   </span>
               </div>
@@ -254,36 +253,37 @@ export function ReportView({ plan, onNewAnalysis }: { plan: DecompositionPlan; o
         <div className="hidden lg:flex items-center gap-6">
             <div className="flex items-center gap-3">
                 <div className="text-right">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">System Size</div>
-                    <div className="text-xs font-bold text-slate-900">{plan.dependencyGraph.length} Components</div>
+                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">System Size</div>
+                    <div className="text-xs font-bold text-foreground">{plan.dependencyGraph.length} Components</div>
                 </div>
-                <div className="w-[1px] h-6 bg-slate-200" />
+                <div className="w-[1px] h-6 bg-border" />
                 <div className="text-right">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Targets</div>
-                    <div className="text-xs font-bold text-slate-900">{plan.boundedContexts.length} Services</div>
+                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Targets</div>
+                    <div className="text-xs font-bold text-foreground">{plan.boundedContexts.length} Services</div>
                 </div>
-                <div className="w-[1px] h-6 bg-slate-200" />
+                <div className="w-[1px] h-6 bg-border" />
                 <div className="text-right">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Risk Level</div>
+                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Risk Level</div>
                     <div className="text-xs font-bold text-amber-600">{plan.transactionalRisks.length} Detected</div>
                 </div>
             </div>
         </div>
 
         <div className="flex items-center gap-3">
+          <ThemeToggle />
           {onNewAnalysis && (
             <button onClick={onNewAnalysis}
-              className="text-[11px] font-bold uppercase tracking-widest px-4 py-2 rounded-xl transition-all border border-slate-200 bg-white text-slate-500 hover:bg-slate-50">
+              className="neo-button text-[11px] font-bold uppercase tracking-widest px-4 py-2 rounded-2xl transition-all text-muted-foreground">
               New Instance
             </button>
           )}
-          <div className="w-[1px] h-6 bg-slate-200 mx-1" />
+          <div className="w-[1px] h-6 bg-border mx-1" />
           <button onClick={handleExportJson}
-            className="text-[11px] font-bold uppercase tracking-widest px-4 py-2 rounded-xl transition-all border border-slate-200 bg-white text-slate-500 hover:bg-slate-50">
+            className="neo-button text-[11px] font-bold uppercase tracking-widest px-4 py-2 rounded-2xl transition-all text-muted-foreground">
             JSON
           </button>
           <button onClick={handleExportPdf}
-            className="text-[11px] font-bold uppercase tracking-widest px-5 py-2.5 rounded-xl transition-all bg-slate-900 text-white shadow-md hover:bg-slate-800">
+            className="neo-button-primary text-[11px] font-bold uppercase tracking-widest px-5 py-2.5 rounded-2xl transition-all">
             Export Report
           </button>
         </div>
@@ -291,17 +291,11 @@ export function ReportView({ plan, onNewAnalysis }: { plan: DecompositionPlan; o
 
       <div className="max-w-[1400px] mx-auto px-8">
           {/* Tab bar */}
-          <div className="mt-8 flex gap-1 border-b" style={{ borderColor: 'hsl(214 20% 90%)' }}>
+          <div className="mt-8 flex gap-2 rounded-full p-2 neo-inset">
             {tabs.map(tab => (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                className="px-6 py-3 text-[11px] font-bold uppercase tracking-widest transition-all relative"
-                style={{
-                  color: activeTab === tab.id ? 'hsl(222 25% 15%)' : 'hsl(215 15% 60%)',
-                }}>
+                className={`px-6 py-3 text-[11px] font-bold uppercase tracking-widest transition-all relative rounded-full ${activeTab === tab.id ? 'neo-toggle-active text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
                 {tab.label}
-                {activeTab === tab.id && (
-                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-900 rounded-full" />
-                )}
               </button>
             ))}
           </div>
@@ -324,13 +318,13 @@ export function ReportView({ plan, onNewAnalysis }: { plan: DecompositionPlan; o
                     <button
                       disabled={activeService === 0}
                       onClick={() => setActiveService(i => i - 1)}
-                      className="text-[10px] font-bold uppercase tracking-widest px-6 py-3 rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-30">
+                      className="neo-button text-[10px] font-bold uppercase tracking-widest px-6 py-3 rounded-2xl text-muted-foreground disabled:opacity-30">
                       ← Sequence Previous
                     </button>
                     <button
                       disabled={activeService === plan.boundedContexts.length - 1}
                       onClick={() => setActiveService(i => i + 1)}
-                      className="text-[10px] font-bold uppercase tracking-widest px-6 py-3 rounded-xl bg-slate-900 text-white shadow-sm hover:bg-slate-800 disabled:opacity-30">
+                      className="neo-button-primary text-[10px] font-bold uppercase tracking-widest px-6 py-3 rounded-2xl disabled:opacity-30">
                       Sequence Next →
                     </button>
                   </div>

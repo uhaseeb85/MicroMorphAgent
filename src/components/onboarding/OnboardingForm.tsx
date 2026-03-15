@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAnalysisStore } from '../../store/analysisStore';
 import type { AnalysisConfig, RepoInput } from '../../types';
+import { ThemeToggle } from '../layout/ThemeToggle';
 
 interface OpenRouterModel {
   id: string;
@@ -34,15 +35,11 @@ export function OnboardingForm({ onSubmit }: { onSubmit?: () => void } = {}) {
   const saved = loadSaved();
 
   const [githubToken, setGithubToken] = useState(saved?.githubToken || '');
-  const [llmProvider] = useState<LLMProvider>('openrouter');
   const [openRouterKey, setOpenRouterKey] = useState(saved?.openRouterApiKey || '');
   const [openRouterModel, setOpenRouterModel] = useState(saved?.options?.llmModel || 'anthropic/claude-3.7-sonnet');
   const [repos, setRepos] = useState<RepoInput[]>(saved?.repos?.length ? saved.repos : [{ url: '', role: 'primary' }]);
   const [granularity, setGranularity] = useState<Granularity>(saved?.options?.granularity || 'balanced');
   const [analysisMode, setAnalysisMode] = useState<AnalysisMode>(saved?.options?.analysisMode || 'ai');
-  
-  // Always show advanced settings for API key configuration in AI mode
-  const [showAdvanced, setShowAdvanced] = useState(true);
 
   const [orModels, setOrModels] = useState<OpenRouterModel[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
@@ -108,30 +105,40 @@ export function OnboardingForm({ onSubmit }: { onSubmit?: () => void } = {}) {
     onSubmit?.();
   };
 
+  const inputFocus = (event: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
+    event.target.style.borderColor = 'hsl(var(--ring))';
+  };
+
+  const inputBlur = (event: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
+    event.target.style.borderColor = 'hsl(var(--border))';
+  };
+
   return (
-    <div className="min-h-screen" style={{ background: 'white' }}>
+    <div className="neo-shell min-h-screen text-foreground">
       {/* Header */}
       <header className="flex items-center justify-between px-8 py-6 max-w-7xl mx-auto">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg flex items-center justify-center shadow-sm" style={{ background: 'hsl(222 25% 15%)' }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <div className="neo-button-primary w-10 h-10 rounded-2xl flex items-center justify-center">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" />
             </svg>
           </div>
-          <span className="font-bold text-[17px] tracking-tight" style={{ color: 'hsl(222 25% 15%)' }}>Micromorph</span>
+          <span className="font-bold text-[17px] tracking-tight text-foreground">Micromorph</span>
         </div>
-        <span className="text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full border" style={{ color: 'hsl(215 15% 45%)', borderColor: 'hsl(214 20% 90%)', background: 'hsl(210 20% 98%)' }}>
-          Beta v1.0
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="neo-badge text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full text-muted-foreground">
+            Beta v1.0
+          </span>
+          <ThemeToggle />
+        </div>
       </header>
 
       {/* Hero */}
       <div className="text-center pt-16 pb-12 px-4 max-w-3xl mx-auto">
-        <h1 className="text-5xl font-extrabold tracking-tight leading-[1.1]"
-          style={{ color: 'hsl(222 25% 15%)' }}>
+        <h1 className="text-5xl font-extrabold tracking-tight leading-[1.1] text-foreground">
           Transform your Monolith into Microservices.
         </h1>
-        <p className="mt-5 text-lg leading-relaxed max-w-xl mx-auto" style={{ color: 'hsl(215 15% 45%)' }}>
+        <p className="mt-5 text-lg leading-relaxed max-w-xl mx-auto text-muted-foreground">
           Decompose legacy Java Spring applications into modernized, 
           independent domain services with semantic analysis.
         </p>
@@ -139,37 +146,33 @@ export function OnboardingForm({ onSubmit }: { onSubmit?: () => void } = {}) {
 
       {/* Card */}
       <form onSubmit={handleSubmit}
-        className="mx-auto max-w-lg rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden"
-        style={{ background: 'white', border: '1px solid hsl(214 20% 90%)' }}>
+        className="neo-panel mx-auto max-w-lg rounded-[2rem] overflow-hidden">
         <div className="p-10 space-y-8">
 
           {/* Repos */}
           <div className="space-y-3" style={analysisMode === 'demo' ? { opacity: 0.7, pointerEvents: 'none' } : {}}>
-            <label className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'hsl(230 20% 50%)' }}>
+            <label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
               {analysisMode === 'demo' ? 'Repository (Pre-configured)' : 'Repository URL'}
             </label>
             {repos.map((repo, i) => (
               <div key={i} className="flex gap-2">
                 <input
                   type="text"
-                  className="flex-1 rounded-xl px-4 py-3 text-sm font-mono outline-none transition-all"
+                  className="neo-field flex-1 rounded-2xl px-4 py-3 text-sm font-mono outline-none"
                   style={{ 
-                    border: '1.5px solid hsl(230 20% 88%)', 
-                    background: analysisMode === 'demo' ? 'hsl(230 10% 94%)' : 'hsl(230 30% 98%)',
                     cursor: analysisMode === 'demo' ? 'not-allowed' : 'text'
                   }}
                   placeholder={analysisMode === 'demo' ? "spring-projects/spring-petclinic" : "https://github.com/org/spring-monolith"}
                   value={analysisMode === 'demo' ? "https://github.com/spring-projects/spring-petclinic" : repo.url}
                   onChange={e => updateRepo(i, e.target.value)}
-                  onFocus={e => (e.target.style.borderColor = 'hsl(244 80% 65%)')}
-                  onBlur={e => (e.target.style.borderColor = 'hsl(230 20% 88%)')}
+                  onFocus={inputFocus}
+                  onBlur={inputBlur}
                   required={analysisMode !== 'demo'}
                   disabled={analysisMode === 'demo'}
                 />
                 {i > 0 && (
                   <button type="button" onClick={() => setRepos(repos.filter((_, ri) => ri !== i))}
-                    className="px-3 rounded-xl text-sm font-medium transition-colors"
-                    style={{ background: 'hsl(0 80% 96%)', color: 'hsl(0 70% 50%)' }}>
+                    className="neo-button px-3 rounded-2xl text-sm font-medium text-rose-500 dark:text-rose-300 transition-colors">
                     ✕
                   </button>
                 )}
@@ -177,8 +180,7 @@ export function OnboardingForm({ onSubmit }: { onSubmit?: () => void } = {}) {
             ))}
             {analysisMode !== 'demo' && (
               <button type="button" onClick={() => setRepos([...repos, { url: '', role: 'dependency' }])}
-                className="text-xs font-semibold flex items-center gap-1 transition-colors"
-                style={{ color: 'hsl(244 70% 60%)' }}>
+                className="text-xs font-semibold flex items-center gap-1 transition-colors text-foreground/80 hover:text-foreground">
                 + Add submodule / dependency repo
               </button>
             )}
@@ -186,28 +188,28 @@ export function OnboardingForm({ onSubmit }: { onSubmit?: () => void } = {}) {
 
           {/* GitHub Token */}
           <div className="space-y-2">
-            <label className="text-sm font-semibold flex items-center gap-2" style={{ color: 'hsl(230 20% 25%)' }}>
+            <label className="text-sm font-semibold flex items-center gap-2 text-foreground/90">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
               Personal Access Token
-              <span className="text-xs font-normal" style={{ color: 'hsl(230 15% 60%)' }}>(Optional)</span>
+              <span className="text-xs font-normal text-muted-foreground">(Optional)</span>
             </label>
             <input
               type="password"
-              className="w-full rounded-xl px-4 py-3 text-sm outline-none transition-all"
-              style={{ border: '1.5px solid hsl(230 20% 88%)', background: 'hsl(230 30% 98%)', fontFamily: 'monospace' }}
+              className="neo-field w-full rounded-2xl px-4 py-3 text-sm outline-none"
+              style={{ fontFamily: 'monospace' }}
               placeholder="ghp_xxxxxxxxxxxxxxxxxx"
               value={githubToken}
               onChange={e => setGithubToken(e.target.value)}
-              onFocus={e => (e.target.style.borderColor = 'hsl(244 80% 65%)')}
-              onBlur={e => (e.target.style.borderColor = 'hsl(230 20% 88%)')}
+              onFocus={inputFocus}
+              onBlur={inputBlur}
             />
-            <p className="text-xs" style={{ color: 'hsl(230 15% 58%)' }}>Required only for private repositories.</p>
+            <p className="text-xs text-muted-foreground">Required only for private repositories.</p>
           </div>
 
           {/* Granularity */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <label className="text-[11px] font-bold uppercase tracking-widest flex items-center gap-2" style={{ color: 'hsl(215 15% 45%)' }}>
+              <label className="text-[11px] font-bold uppercase tracking-widest flex items-center gap-2 text-muted-foreground">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></svg>
                 Service Granularity
               </label>
@@ -215,16 +217,7 @@ export function OnboardingForm({ onSubmit }: { onSubmit?: () => void } = {}) {
             <div className="grid grid-cols-3 gap-3">
               {GRANULARITY_OPTIONS.map(opt => (
                 <button key={opt.value} type="button" onClick={() => setGranularity(opt.value)}
-                  className="rounded-xl py-3.5 px-3 text-center transition-all border outline-none"
-                  style={granularity === opt.value ? {
-                    background: 'hsl(222 25% 15%)',
-                    borderColor: 'hsl(222 25% 15%)',
-                    color: 'white'
-                  } : {
-                    background: 'white',
-                    borderColor: 'hsl(214 20% 90%)',
-                    color: 'hsl(215 15% 45%)'
-                  }}>
+                  className={`rounded-2xl py-3.5 px-3 text-center transition-all outline-none ${granularity === opt.value ? 'neo-button-primary' : 'neo-button text-muted-foreground'}`}>
                   <div className="font-bold text-xs">{opt.label}</div>
                   <div className="text-[10px] mt-0.5 opacity-70 uppercase tracking-tighter">{opt.sub}</div>
                 </button>
@@ -234,7 +227,7 @@ export function OnboardingForm({ onSubmit }: { onSubmit?: () => void } = {}) {
 
           {/* Analysis Engine */}
           <div className="space-y-4">
-            <label className="text-[11px] font-bold uppercase tracking-widest" style={{ color: 'hsl(215 15% 45%)' }}>
+            <label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
               Analysis Strategy
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -244,7 +237,7 @@ export function OnboardingForm({ onSubmit }: { onSubmit?: () => void } = {}) {
                   icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a4 4 0 0 1 4 4 4 4 0 0 1-4 4 4 4 0 0 1-4-4 4 4 0 0 1 4-4" /><path d="M6 20v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" /></svg>
                 },
                 {
-                  value: 'static' as AnalysisMode, label: 'Static', sub: 'AST-Only',
+                  value: 'static' as AnalysisMode, label: 'Static', sub: 'No LLM',
                   icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
                 },
                 {
@@ -253,16 +246,7 @@ export function OnboardingForm({ onSubmit }: { onSubmit?: () => void } = {}) {
                 }
               ]).map(opt => (
                 <button key={opt.value} type="button" onClick={() => setAnalysisMode(opt.value)}
-                  className="rounded-xl py-3 px-4 text-left flex flex-col gap-1.5 transition-all border outline-none"
-                  style={analysisMode === opt.value ? {
-                    background: 'hsl(222 25% 15%)',
-                    borderColor: 'hsl(222 25% 15%)',
-                    color: 'white'
-                  } : {
-                    background: 'white',
-                    borderColor: 'hsl(214 20% 90%)',
-                    color: 'hsl(215 15% 45%)'
-                  }}>
+                  className={`rounded-2xl py-3 px-4 text-left flex flex-col gap-1.5 transition-all outline-none ${analysisMode === opt.value ? 'neo-button-primary' : 'neo-button text-muted-foreground'}`}>
                   {opt.icon}
                   <div>
                     <div className="font-bold text-[10px] uppercase tracking-wider">{opt.label}</div>
@@ -276,27 +260,28 @@ export function OnboardingForm({ onSubmit }: { onSubmit?: () => void } = {}) {
           {/* Advanced (LLM config) */}
           {analysisMode === 'ai' && (
             <div className="space-y-3">
-              <div className="rounded-xl p-5 space-y-5" style={{ background: 'hsl(210 20% 98%)', border: '1px solid hsl(214 20% 90%)' }}>
+              <div className="neo-inset rounded-[1.5rem] p-5 space-y-5">
                 <div className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-widest pl-1" style={{ color: 'hsl(215 15% 45%)' }}>OpenRouter API Key</label>
-                    <input type="password" className="w-full rounded-xl px-4 py-2.5 text-sm outline-none shadow-sm transition-all focus:ring-1 focus:ring-slate-400"
-                      style={{ border: '1px solid hsl(214 20% 88%)', fontFamily: 'monospace' }}
+                    <label className="text-[10px] font-bold uppercase tracking-widest pl-1 text-muted-foreground">OpenRouter API Key</label>
+                    <input type="password" className="neo-field w-full rounded-2xl px-4 py-2.5 text-sm outline-none"
+                      style={{ fontFamily: 'monospace' }}
                       placeholder="sk-or-v1-..." value={openRouterKey} onChange={e => setOpenRouterKey(e.target.value)} />
                   </div>
                   
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between pl-1">
-                      <label className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'hsl(215 15% 45%)' }}>Language Model</label>
-                      <button type="button" onClick={fetchModels} className="text-[9px] font-bold uppercase tracking-widest text-slate-500 hover:text-slate-900 transition-colors">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Language Model</label>
+                      <button type="button" onClick={fetchModels} className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">
                         {loadingModels ? 'Updating...' : 'Refresh List'}
                       </button>
                     </div>
                     <select
-                      className="w-full rounded-xl px-4 py-2.5 text-sm outline-none appearance-none shadow-sm bg-white"
-                      style={{ border: '1px solid hsl(214 20% 88%)', background: 'white url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 fill=%27none%27 viewBox=%270 0 24 24%27 stroke=%27%2364748b%27%3E%3Cpath stroke-linecap=%27round%27 stroke-linejoin=%27round%27 stroke-width=%272%27 d=%27M19 9l-7 7-7-7%27/%3E%3C/svg%3E") no-repeat right 0.75rem center/1rem' }}
+                      className="neo-field w-full rounded-2xl px-4 py-2.5 text-sm outline-none"
                       value={openRouterModel}
                       onChange={e => setOpenRouterModel(e.target.value)}
+                      onFocus={inputFocus}
+                      onBlur={inputBlur}
                     >
                       {orModels.length > 0 ? (
                         orModels.map(m => {
@@ -325,8 +310,7 @@ export function OnboardingForm({ onSubmit }: { onSubmit?: () => void } = {}) {
         {/* Submit */}
         <div className="px-10 pb-10">
           <button type="submit"
-            className="w-full py-4 rounded-xl text-white text-sm font-bold tracking-widest uppercase flex items-center justify-center gap-2.5 transition-all hover:bg-slate-800 active:scale-[0.98] shadow-lg shadow-slate-200"
-            style={{ background: 'hsl(222 25% 15%)' }}>
+            className="neo-button-primary w-full py-4 rounded-2xl text-sm font-bold tracking-widest uppercase flex items-center justify-center gap-2.5 transition-all active:scale-[0.98]">
             Morph to Microservices
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="9 18 15 12 9 6" />
@@ -336,7 +320,7 @@ export function OnboardingForm({ onSubmit }: { onSubmit?: () => void } = {}) {
       </form>
 
       {/* Footer */}
-      <p className="text-center text-xs py-8" style={{ color: 'hsl(230 15% 60%)' }}>
+      <p className="text-center text-xs py-8 text-muted-foreground">
         Developer Contact : uhaseeb85@gmail.com
       </p>
     </div>

@@ -65,6 +65,28 @@
     --input: 214 20% 90%;
     --ring: 222 25% 15%;
 
+    --shell-gradient: radial-gradient(circle at top left, hsl(210 45% 100%) 0%, hsl(210 22% 96%) 40%, hsl(210 18% 93%) 100%);
+    --surface-raised: linear-gradient(145deg, hsl(0 0% 100%), hsl(210 16% 94%));
+    --surface-subtle: linear-gradient(145deg, hsl(210 30% 99%), hsl(210 18% 95%));
+    --surface-inset: linear-gradient(145deg, hsl(210 16% 92%), hsl(210 24% 98%));
+    --surface-strong: linear-gradient(145deg, hsl(222 25% 16%), hsl(214 28% 24%));
+    --shadow-ambient: -10px -10px 24px hsla(0, 0%, 100%, 0.95), 14px 14px 32px hsla(215, 28%, 74%, 0.35);
+    --shadow-ambient-soft: -6px -6px 14px hsla(0, 0%, 100%, 0.92), 8px 8px 18px hsla(215, 26%, 76%, 0.28);
+    --shadow-inset: inset 6px 6px 12px hsla(215, 24%, 82%, 0.55), inset -6px -6px 12px hsla(0, 0%, 100%, 0.9);
+    --shadow-button: -5px -5px 12px hsla(0, 0%, 100%, 0.95), 8px 8px 16px hsla(215, 24%, 74%, 0.34);
+    --shadow-pressed: inset 4px 4px 10px hsla(215, 22%, 78%, 0.45), inset -4px -4px 10px hsla(0, 0%, 100%, 0.9);
+    --outline-soft: 1px solid hsla(0, 0%, 100%, 0.72);
+    --graph-panel: hsla(0, 0%, 100%, 0.85);
+    --graph-label: hsla(0, 0%, 100%, 0.95);
+    --graph-link: rgba(71, 85, 105, 0.16);
+    --graph-link-transactional: rgba(225, 29, 72, 0.42);
+    --graph-node-controller: hsl(222 47% 11%);
+    --graph-node-service: hsl(215 25% 40%);
+    --graph-node-repository: hsl(38 90% 45%);
+    --graph-node-entity: hsl(0 70% 50%);
+    --graph-node-config: hsl(252 45% 45%);
+    --graph-node-util: hsl(215 15% 65%);
+
     --radius: 0.75rem;
   }
 
@@ -96,6 +118,28 @@
     --border: 217 30% 15%;
     --input: 217 30% 15%;
     --ring: 213 25% 85%;
+
+    --shell-gradient: radial-gradient(circle at top left, hsl(220 24% 15%) 0%, hsl(222 20% 7%) 48%, hsl(223 18% 4%) 100%);
+    --surface-raised: linear-gradient(145deg, hsl(220 18% 12%), hsl(223 18% 8%));
+    --surface-subtle: linear-gradient(145deg, hsl(220 20% 11%), hsl(223 18% 9%));
+    --surface-inset: linear-gradient(145deg, hsl(224 20% 6%), hsl(220 16% 11%));
+    --surface-strong: linear-gradient(145deg, hsl(210 38% 92%), hsl(210 20% 78%));
+    --shadow-ambient: -10px -10px 24px hsla(219, 22%, 16%, 0.7), 16px 16px 30px hsla(223, 28%, 2%, 0.88);
+    --shadow-ambient-soft: -6px -6px 16px hsla(219, 22%, 16%, 0.62), 10px 10px 18px hsla(223, 28%, 3%, 0.82);
+    --shadow-inset: inset 7px 7px 14px hsla(223, 28%, 3%, 0.9), inset -7px -7px 12px hsla(219, 18%, 18%, 0.45);
+    --shadow-button: -5px -5px 12px hsla(219, 20%, 16%, 0.7), 8px 8px 16px hsla(223, 28%, 3%, 0.88);
+    --shadow-pressed: inset 4px 4px 10px hsla(223, 28%, 3%, 0.88), inset -4px -4px 10px hsla(219, 18%, 18%, 0.38);
+    --outline-soft: 1px solid hsla(214, 22%, 30%, 0.9);
+    --graph-panel: hsla(221, 20%, 10%, 0.9);
+    --graph-label: hsla(220, 18%, 12%, 0.95);
+    --graph-link: rgba(148, 163, 184, 0.24);
+    --graph-link-transactional: rgba(251, 113, 133, 0.5);
+    --graph-node-controller: hsl(210 20% 96%);
+    --graph-node-service: hsl(206 32% 72%);
+    --graph-node-repository: hsl(39 92% 62%);
+    --graph-node-entity: hsl(350 85% 72%);
+    --graph-node-config: hsl(265 70% 80%);
+    --graph-node-util: hsl(214 14% 72%);
   }
 }
 
@@ -103,7 +147,97 @@
   * {
     @apply border-border;
   }
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
   body {
     @apply bg-background text-foreground font-sans;
+    background-image: var(--shell-gradient);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+  button,
+  input,
+  select,
+  textarea {
+    transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, color 180ms ease, transform 180ms ease;
+  }
+}
+
+@layer components {
+  .neo-shell {
+    background: var(--shell-gradient);
+  }
+
+  .neo-panel {
+    background: var(--surface-raised);
+    box-shadow: var(--shadow-ambient);
+    border: var(--outline-soft);
+  }
+
+  .neo-panel-soft {
+    background: var(--surface-subtle);
+    box-shadow: var(--shadow-ambient-soft);
+    border: var(--outline-soft);
+  }
+
+  .neo-inset {
+    background: var(--surface-inset);
+    box-shadow: var(--shadow-inset);
+    border: 1px solid hsl(var(--border) / 0.8);
+  }
+
+  .neo-button {
+    background: var(--surface-raised);
+    box-shadow: var(--shadow-button);
+    border: var(--outline-soft);
+  }
+
+  .neo-button:hover {
+    transform: translateY(-1px);
+  }
+
+  .neo-button:active {
+    box-shadow: var(--shadow-pressed);
+    transform: translateY(0);
+  }
+
+  .neo-button-primary {
+    background: var(--surface-strong);
+    color: hsl(var(--primary-foreground));
+    box-shadow: 0 18px 40px hsl(var(--ring) / 0.16);
+    border: 1px solid hsl(var(--ring) / 0.2);
+  }
+
+  .neo-field {
+    background: var(--surface-inset);
+    box-shadow: var(--shadow-inset);
+    border: 1px solid hsl(var(--border) / 0.75);
+    color: hsl(var(--foreground));
+  }
+
+  .neo-badge {
+    background: hsl(var(--background) / 0.65);
+    border: 1px solid hsl(var(--border) / 0.8);
+    box-shadow: var(--shadow-ambient-soft);
+  }
+
+  .neo-divider {
+    border-color: hsl(var(--border) / 0.72);
+  }
+
+  .neo-toggle-track {
+    background: var(--surface-inset);
+    box-shadow: var(--shadow-inset);
+    border: 1px solid hsl(var(--border) / 0.75);
+  }
+
+  .neo-toggle-active {
+    background: var(--surface-raised);
+    box-shadow: var(--shadow-button);
+    color: hsl(var(--foreground));
   }
 }

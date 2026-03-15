@@ -9,6 +9,8 @@ export interface ActivityItem {
   status?: 'pending' | 'success' | 'error';
 }
 
+export type ThemeMode = 'light' | 'dark';
+
 interface AnalysisState {
   config: AnalysisConfig | null;
   phase: number;
@@ -16,6 +18,7 @@ interface AnalysisState {
   isAnalyzing: boolean;
   plan: DecompositionPlan | null;
   errorMessage: string | null;
+  theme: ThemeMode;
 
   // Detailed progress tracking
   filesProcessed: number;
@@ -37,6 +40,8 @@ interface AnalysisState {
   setAnalyzing: (isAnalyzing: boolean) => void;
   setPlan: (plan: DecompositionPlan) => void;
   setError: (msg: string) => void;
+  setTheme: (theme: ThemeMode) => void;
+  toggleTheme: () => void;
   resetPipeline: () => void;
 
   // Progress tracking actions
@@ -58,6 +63,7 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
   isAnalyzing: false,
   plan: null,
   errorMessage: null,
+  theme: 'light',
 
   // Detailed progress tracking
   filesProcessed: 0,
@@ -133,6 +139,12 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
       status: 'error'
     });
   },
+
+  setTheme: (theme) => set({ theme }),
+
+  toggleTheme: () => set((state) => ({
+    theme: state.theme === 'dark' ? 'light' : 'dark'
+  })),
 
   resetPipeline: () => set({
     phase: 0,
