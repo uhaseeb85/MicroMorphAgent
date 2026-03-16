@@ -1,14 +1,16 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ThemeToggle } from './layout/ThemeToggle';
 import {
   Layers,
   GitCommit,
   Network,
-  ShieldAlert,
-  Map,
-  Box,
   Play,
   Code2,
+  Github,
+  FileCode2,
+  Cpu,
+  CheckCircle2,
+  ChevronDown,
 } from 'lucide-react';
 
 interface HeroPageProps {
@@ -16,60 +18,119 @@ interface HeroPageProps {
   onTryDemo: () => void;
 }
 
-const FEATURES = [
+const FAQ_ITEMS = [
   {
-    icon: Layers,
-    color: 'text-blue-500 dark:text-blue-400',
+    q: 'Does any code or data leave my browser?',
+    a: 'Your source code never leaves the browser. The app fetches .java files and commit metadata directly from the GitHub API using your token, parses them in-memory with a WebAssembly-compiled Lezer Java AST parser, and builds all graphs client-side. The only data sent externally is the per-package summaries (class names, annotations, cross-package imports) forwarded to your chosen OpenRouter model for semantic analysis.'
+  },
+  {
+    q: 'How does the Java parser work?',
+    a: 'Each .java file is parsed using Lezer\'s Java grammar running entirely in the browser. The AST walk extracts: the package declaration, all import statements, class/interface/enum name, Spring annotations (@RestController, @Service, @Repository, @Entity, @Configuration etc.), method signatures, field declarations, and all type references used inside the class body. If the AST parse fails, a regex fallback extracts the same fields. Nothing is sent to a server for parsing.'
+  },
+  {
+    q: 'How is the dependency graph built?',
+    a: 'After parsing, each class becomes a graph node. Outbound edges are resolved in two passes: (1) explicit imports that match another class in the same repo are direct edges; (2) unqualified type references (e.g. field types, method parameters, return types) are matched against explicit imports or same-package classes. The result is an import- and annotation-level directed graph with inbound and outbound counts per node.'
+  },
+  {
+    q: 'What is a co-change matrix and how is it used?',
+    a: 'The co-change matrix is built from Git commit history. For each commit, every pair of .java files changed together increments a frequency counter. The matrix is bi-directional for fast lookup. Only files matching the standard Maven path (src/main/java/…) are indexed by fully-qualified class name. The top 50 co-change pairs are included in the payload sent to the LLM as a structural coupling signal alongside the AST-derived dependency graph.'
+  },
+  {
+    q: 'What does the LLM actually receive and produce?',
+    a: 'Phase 4 sends one LLM call per package: class names with their detected layer, Spring annotations, cross-package imports, and @Transactional methods. The LLM returns a JSON object with the package\'s business domain, architectural role, and coupling concerns. Phase 5 sends all package summaries together with the top co-change pairs and @Transactional boundary crossings; the LLM groups them into bounded contexts with a name, service name, packages, entities, inferred APIs, dependency counts, risk score, and rationale. A second Phase 5 call generates an ordered extraction roadmap and transactional risk table. A third parallelised call generates a Maven module layout per service.'
+  },
+  {
+    q: 'How does Static Mode differ from AI Mode?',
+    a: 'Static Mode skips all LLM calls. Bounded contexts are derived heuristically from package namespace grouping and the dependency graph: top-level sub-packages after the groupId are treated as candidate domains, then inbound/outbound coupling scores are used to rank and merge them. The extraction roadmap is ordered by ascending total coupling (low-coupled services are extracted first). Transactional risks are detected by scanning for @Transactional nodes whose outbound dependencies cross context boundaries. No API key is required.'
+  },
+  {
+    q: 'How are external library dependencies handled?',
+    a: 'The dependency graph only creates nodes for classes that exist in the analysed repository. Imports that resolve to external libraries (standard library, Spring framework, third-party JARs) do not create nodes and are not included in dependency edges. They are, however, still visible in the cross-package import list forwarded to the LLM so the model can infer the role of each package (e.g. a class that imports Hibernate types is likely a persistence layer). pom.xml is parsed for groupId and module metadata but dependency versions are not currently used in the graph.'
+  },
+  {
+    q: 'What is the rate limiter doing?',
+    a: 'The GitHub API has per-minute request limits. The built-in RateLimiter batches file fetches at 50 concurrent requests with a 100 ms floor between batches. Commit detail fetches (one request per commit to get its changed-file list) are similarly batched. This prevents 429 errors on large repositories while keeping analysis time reasonable.'
+  },
+  {
+    q: 'How is granularity controlled?',
+    a: 'The granularity setting (coarse / balanced / fine) is injected as a directive into the system prompt for the BoundedContextAnalyzer LLM call. Coarse targets 2–4 services and instructs the model to only split on strong domain boundaries. Balanced targets 4–7 services. Fine instructs the model to split aggressively, targeting 8 or more services. This is a soft directive — the model may produce more or fewer contexts depending on the actual code structure.'
+  },
+  {
+    q: 'What happens if an LLM call fails mid-analysis?',
+    a: 'Package summarisation failures are caught per-package and fall back to a minimal summary (domain inferred from the last segment of the package name, role marked as unclear). If the bounded-context or roadmap LLM call fails, the error is surfaced in the activity log and analysis stops with an error message. Per-service module structure generation failures are caught individually — the service is included in the report without a module layout rather than aborting the whole pipeline.'
+  },
+  {
+    q: 'Is my GitHub token or API key stored anywhere?',
+    a: 'Credentials are stored only in your browser\'s localStorage under the key decomp_config. They are never sent to any server operated by this app. They are transmitted as Authorization headers directly from your browser to github.com and openrouter.ai respectively over HTTPS. Clearing your browser\'s site data removes them completely.'
+  },
+];
+
+const FLOW_STEPS = [
+  {
+    icon: Github,
+    label: 'Connect to GitHub',
+    sub: 'Auth & API access',
+    color: 'text-slate-500 dark:text-slate-400',
+    bg: 'bg-slate-500/10',
+    glowColor: '#94a3b8',
+  },
+  {
+    icon: FileCode2,
+    label: 'Retrieve Source Files',
+    sub: 'Download .java classes',
+    color: 'text-blue-500',
     bg: 'bg-blue-500/10',
-    title: 'Bounded Context Detection',
-    description:
-      'Groups packages into candidate microservices using LLM reasoning over your real code structure — not just naming conventions.',
+    glowColor: '#3b82f6',
   },
   {
     icon: GitCommit,
-    color: 'text-violet-500 dark:text-violet-400',
+    label: 'Fetch Commit History',
+    sub: 'Mine co-change signals',
+    color: 'text-violet-500',
     bg: 'bg-violet-500/10',
-    title: 'Co-Change Matrix',
-    description:
-      'Mines Git commit history to find classes that evolve together, revealing hidden coupling invisible to static analysis.',
+    glowColor: '#8b5cf6',
   },
   {
     icon: Network,
-    color: 'text-teal-500 dark:text-teal-400',
+    label: 'Build Dependency Graph',
+    sub: 'Map class-level coupling',
+    color: 'text-teal-500',
     bg: 'bg-teal-500/10',
-    title: 'Dependency Graph',
-    description:
-      'Builds an import- and annotation-level graph to quantify inbound and outbound coupling per class across the codebase.',
+    glowColor: '#14b8a6',
   },
   {
-    icon: ShieldAlert,
-    color: 'text-rose-500 dark:text-rose-400',
-    bg: 'bg-rose-500/10',
-    title: 'Transactional Risk Analysis',
-    description:
-      'Flags @Transactional boundaries that span multiple candidate services, with recommended mitigations like Saga and Outbox.',
-  },
-  {
-    icon: Map,
-    color: 'text-amber-500 dark:text-amber-400',
+    icon: Cpu,
+    label: 'LLM Analysis',
+    sub: 'AI reasons over code',
+    color: 'text-amber-500',
     bg: 'bg-amber-500/10',
-    title: 'Extraction Roadmap',
-    description:
-      'Produces an ordered, phased extraction plan with effort estimates, blocker callouts, and pattern recommendations.',
+    glowColor: '#f59e0b',
   },
   {
-    icon: Box,
-    color: 'text-emerald-500 dark:text-emerald-400',
+    icon: Layers,
+    label: 'Decomposition Plan',
+    sub: 'Contexts, risks & roadmap',
+    color: 'text-emerald-500',
     bg: 'bg-emerald-500/10',
-    title: 'Maven Module Scaffolding',
-    description:
-      'Generates proposed directory layouts and pom.xml shapes for every new service so you can start coding immediately.',
+    glowColor: '#10b981',
   },
 ];
 
 
 
+
+
 export function HeroPage({ formNode, onTryDemo }: HeroPageProps) {
+  const [activeStep, setActiveStep] = useState(0);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveStep(prev => (prev + 1) % FLOW_STEPS.length);
+    }, 1800);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="min-h-screen neo-shell text-foreground">
       {/* ── Header ── */}
@@ -151,29 +212,172 @@ export function HeroPage({ formNode, onTryDemo }: HeroPageProps) {
           </div>
         </section>
 
-        {/* ── Features ── */}
+        {/* ── How It Works — Animated Flow ── */}
         <section className="space-y-8">
+          <style>{`
+            @keyframes travelRight {
+              0%   { transform: translateX(-100%); opacity: 0; }
+              15%  { opacity: 1; }
+              85%  { opacity: 1; }
+              100% { transform: translateX(200%); opacity: 0; }
+            }
+            @keyframes travelDown {
+              0%   { transform: translateY(-100%); opacity: 0; }
+              15%  { opacity: 1; }
+              85%  { opacity: 1; }
+              100% { transform: translateY(200%); opacity: 0; }
+            }
+          `}</style>
           <div className="text-center space-y-2">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-              What it analyses
-            </p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">How it works</p>
             <h2 className="text-3xl font-black tracking-tighter text-foreground">
-              Everything that matters for decomposition
+              From repository to roadmap
             </h2>
+            <p className="text-sm text-muted-foreground max-w-xl mx-auto">
+              Six automated steps transform your codebase into a complete decomposition plan — no setup, no backend required.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {FEATURES.map(({ icon: Icon, color, bg, title, description }) => (
-              <div key={title} className="neo-panel rounded-3xl p-6 flex flex-col gap-4">
-                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${bg}`}>
-                  <Icon size={18} className={color} />
+          <div className="neo-panel rounded-3xl p-6 sm:p-10">
+            {/* Desktop: horizontal row */}
+            <div className="hidden md:flex items-start justify-between">
+              {FLOW_STEPS.map((step, index) => {
+                const Icon = step.icon;
+                const isActive = activeStep === index;
+                const isDone = index < activeStep;
+                return (
+                  <React.Fragment key={step.label}>
+                    <div className="flex flex-col items-center gap-2.5 w-24 flex-shrink-0">
+                      <div
+                        className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 ${step.bg} ${isActive ? 'scale-110' : isDone ? 'opacity-70' : 'opacity-35'}`}
+                        style={isActive ? { boxShadow: `0 0 22px 5px ${step.glowColor}50` } : {}}
+                      >
+                        {isDone ? (
+                          <CheckCircle2 size={22} className="text-emerald-500" />
+                        ) : (
+                          <Icon size={22} className={isActive ? step.color : 'text-muted-foreground/50'} />
+                        )}
+                      </div>
+                      <div className="text-center space-y-0.5">
+                        <p className={`text-[11px] font-bold leading-snug transition-colors duration-500 ${isActive ? 'text-foreground' : isDone ? 'text-muted-foreground/60' : 'text-muted-foreground/35'}`}>
+                          {step.label}
+                        </p>
+                        <p className={`text-[10px] leading-snug transition-colors duration-500 ${isActive ? 'text-muted-foreground' : 'text-muted-foreground/30'}`}>
+                          {step.sub}
+                        </p>
+                      </div>
+                    </div>
+                    {index < FLOW_STEPS.length - 1 && (
+                      <div className="flex-1 relative h-px mt-6 mx-1 bg-border/40 overflow-hidden">
+                        {isDone && (
+                          <div
+                            className="absolute inset-0 transition-all duration-700"
+                            style={{ background: `${step.glowColor}50` }}
+                          />
+                        )}
+                        {isActive && (
+                          <div
+                            className="absolute inset-y-0 w-1/2"
+                            style={{
+                              background: `linear-gradient(to right, transparent, ${step.glowColor}cc, transparent)`,
+                              animation: 'travelRight 1.8s linear infinite',
+                            }}
+                          />
+                        )}
+                      </div>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+
+            {/* Mobile: vertical stack */}
+            <div className="flex md:hidden flex-col">
+              {FLOW_STEPS.map((step, index) => {
+                const Icon = step.icon;
+                const isActive = activeStep === index;
+                const isDone = index < activeStep;
+                return (
+                  <React.Fragment key={step.label}>
+                    <div className={`flex items-center gap-4 px-3 py-2.5 rounded-2xl transition-all duration-500 ${isActive ? 'bg-foreground/5' : ''}`}>
+                      <div
+                        className={`w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center transition-all duration-500 ${step.bg} ${isActive ? '' : isDone ? 'opacity-70' : 'opacity-35'}`}
+                        style={isActive ? { boxShadow: `0 0 16px 4px ${step.glowColor}40` } : {}}
+                      >
+                        {isDone ? (
+                          <CheckCircle2 size={18} className="text-emerald-500" />
+                        ) : (
+                          <Icon size={18} className={isActive ? step.color : 'text-muted-foreground/50'} />
+                        )}
+                      </div>
+                      <div>
+                        <p className={`text-[12px] font-bold transition-colors duration-500 ${isActive ? 'text-foreground' : isDone ? 'text-muted-foreground/60' : 'text-muted-foreground/35'}`}>
+                          {step.label}
+                        </p>
+                        <p className={`text-[11px] transition-colors duration-500 ${isActive ? 'text-muted-foreground' : 'text-muted-foreground/30'}`}>
+                          {step.sub}
+                        </p>
+                      </div>
+                    </div>
+                    {index < FLOW_STEPS.length - 1 && (
+                      <div className="ml-8 w-px h-5 relative bg-border/40 overflow-hidden">
+                        {isDone && (
+                          <div className="absolute inset-0" style={{ background: `${step.glowColor}50` }} />
+                        )}
+                        {isActive && (
+                          <div
+                            className="absolute inset-x-0 h-1/2"
+                            style={{
+                              background: `linear-gradient(to bottom, transparent, ${step.glowColor}cc, transparent)`,
+                              animation: 'travelDown 1.8s linear infinite',
+                            }}
+                          />
+                        )}
+                      </div>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* ── FAQ ── */}
+        <section className="space-y-8">
+          <div className="text-center space-y-2">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Under the hood</p>
+            <h2 className="text-3xl font-black tracking-tighter text-foreground">Frequently asked questions</h2>
+            <p className="text-sm text-muted-foreground max-w-xl mx-auto">
+              Deep-dive answers on how MicroMorphAgent works technically — from parsing to LLM prompts to credential storage.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            {FAQ_ITEMS.map((item, index) => {
+              const isOpen = openFaq === index;
+              return (
+                <div key={index} className="neo-panel rounded-2xl overflow-hidden">
+                  <button
+                    className="w-full flex items-center justify-between gap-4 px-6 py-4 text-left"
+                    onClick={() => setOpenFaq(isOpen ? null : index)}
+                  >
+                    <span className="text-[13px] font-bold text-foreground leading-snug">{item.q}</span>
+                    <ChevronDown
+                      size={16}
+                      className={`flex-shrink-0 text-muted-foreground transition-transform duration-300 ${
+                        isOpen ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+                  <div
+                    className="overflow-hidden transition-all duration-300"
+                    style={{ maxHeight: isOpen ? '400px' : '0px' }}
+                  >
+                    <p className="px-6 pb-5 text-[12px] text-muted-foreground leading-relaxed">{item.a}</p>
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  <h3 className="font-bold tracking-tighter text-foreground text-[15px]">{title}</h3>
-                  <p className="text-[12px] text-muted-foreground leading-relaxed">{description}</p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
 
