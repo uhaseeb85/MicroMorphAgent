@@ -174,18 +174,17 @@ export function HeroPage({ formNode, onTryDemo }: HeroPageProps) {
 
             {/* Subtext */}
             <p className="text-base text-muted-foreground leading-relaxed font-medium">
-              Point MicroMorphAgent at any GitHub repository and get back a full
+              Point MicroMorp at any Java GitHub repository and get back a full
               AI-driven decomposition plan — bounded contexts, dependency graph,
-              transactional risks, and Maven module scaffolds — all in the browser,
-              no backend required.
+              transactional risks, and Maven module scaffolds.
             </p>
 
             {/* Feature highlights */}
             <div className="space-y-3">
               {[
-                { icon: Layers, color: 'text-blue-500', text: 'Identify functional modules from code (AI-powered)' },
-                { icon: GitCommit, color: 'text-violet-500', text: 'Analyze code evolution with Git history (Non-AI)' },
-                { icon: Network, color: 'text-teal-500', text: 'Visualize class-level dependencies (Non-AI)' },
+                { icon: Layers, color: 'text-blue-500', text: 'Identify functional modules from code' },
+                { icon: GitCommit, color: 'text-violet-500', text: 'Analyze code evolution with Git history' },
+                { icon: Network, color: 'text-teal-500', text: 'Visualize class-level dependencies' },
               ].map(({ icon: Icon, color, text }) => (
                 <div key={text} className="flex items-center gap-3">
                   <Icon size={16} className={color} />
@@ -201,7 +200,7 @@ export function HeroPage({ formNode, onTryDemo }: HeroPageProps) {
                 className="neo-button flex items-center gap-2 px-8 py-3.5 rounded-3xl text-[12px] font-bold uppercase tracking-widest text-muted-foreground transition-all"
               >
                 <Play size={14} />
-                Try Demo — no credentials
+                Try Demo
               </button>
             </div>
           </div>
@@ -234,7 +233,7 @@ export function HeroPage({ formNode, onTryDemo }: HeroPageProps) {
               From repository to roadmap
             </h2>
             <p className="text-sm text-muted-foreground max-w-xl mx-auto">
-              Six automated steps transform your codebase into a complete decomposition plan — no setup, no backend required.
+              Six automated steps transform your codebase into a complete decomposition plan.
             </p>
           </div>
 
@@ -348,7 +347,7 @@ export function HeroPage({ formNode, onTryDemo }: HeroPageProps) {
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Under the hood</p>
             <h2 className="text-3xl font-black tracking-tighter text-foreground">Frequently asked questions</h2>
             <p className="text-sm text-muted-foreground max-w-xl mx-auto">
-              Deep-dive answers on how MicroMorphAgent works technically — from parsing to LLM prompts to credential storage.
+              Deep-dive answers on how MicroMorph works technically — from parsing to LLM prompts to credential storage.
             </p>
           </div>
 
@@ -386,7 +385,7 @@ export function HeroPage({ formNode, onTryDemo }: HeroPageProps) {
       {/* ── Footer ── */}
       <footer className="border-t neo-divider py-6 text-center">
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-          MicroMorphAgent — Client-side only · All rights reserved
+          MicroMorph· All rights reserved
         </p>
       </footer>
     </div>
