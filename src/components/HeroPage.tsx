@@ -360,7 +360,7 @@ export function HeroPage({ formNode, onTryDemo }: HeroPageProps) {
                     className="w-full flex items-center justify-between gap-4 px-6 py-4 text-left"
                     onClick={() => setOpenFaq(isOpen ? null : index)}
                   >
-                    <span className="text-[13px] font-bold text-foreground leading-snug">{item.q}</span>
+                    <span className="text-lg font-bold text-foreground leading-snug">{item.q}</span>
                     <ChevronDown
                       size={16}
                       className={`flex-shrink-0 text-muted-foreground transition-transform duration-300 ${
@@ -372,7 +372,7 @@ export function HeroPage({ formNode, onTryDemo }: HeroPageProps) {
                     className="overflow-hidden transition-all duration-300"
                     style={{ maxHeight: isOpen ? '400px' : '0px' }}
                   >
-                    <p className="px-6 pb-5 text-[12px] text-muted-foreground leading-relaxed">{item.a}</p>
+                    <p className="px-6 pb-5 text-base text-foreground/80 leading-relaxed">{item.a}</p>
                   </div>
                 </div>
               );
