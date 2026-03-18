@@ -9,7 +9,13 @@ export interface PackageSummary {
 }
 
 export class Summarizer {
-  private llm: LLMClient;
+  private static readonly CACHE_KEY = 'micromorph.package-summary-cache.v1';
+  private static readonly CACHE_VERSION = 1;
+  private static readonly MAX_CACHE_ENTRIES = 250;
+  private static cacheLoaded = false;
+  private static cache = new Map<string, { summary: PackageSummary; updatedAt: number }>();
+
+  private readonly llm: LLMClient;
 
   constructor(llm: LLMClient) {
     this.llm = llm;
@@ -20,12 +26,21 @@ export class Summarizer {
        return { packageName, domain: 'Unknown', role: 'Empty', couplingConcerns: 'None' };
     }
 
+    const cacheKey = this.getCacheKey(packageName, classes);
+    const cached = this.getCachedSummary(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const classNames = classes.map(c => `${c.fullyQualifiedName} (${c.layer})`);
     const annotations = new Set<string>();
     const outboundImports = new Set<string>();
     const transactionalMethods = new Set<string>();
+    const layerCounts = new Map<string, number>();
 
     classes.forEach(c => {
+      const layerKey = c.layer || 'util';
+      layerCounts.set(layerKey, (layerCounts.get(layerKey) || 0) + 1);
       c.annotations.forEach(a => annotations.add(a));
       c.imports.forEach(i => {
         if (!i.startsWith(packageName) && !i.startsWith('java.') && !i.startsWith('org.springframework.')) {
@@ -50,13 +65,25 @@ Response Schema:
   "domain": string,
   "role": string,
   "couplingConcerns": string
-}`;
+}
+The input may contain representative samples and aggregated counts for large packages. Use the counts and samples together; do not assume omitted items are absent.`;
 
-    const userPrompt = `Package: ${packageName}
-Classes: ${Array.from(classNames).join(', ')}
-Annotations: ${Array.from(annotations).join(', ')}
-Cross-package Imports: ${Array.from(outboundImports).join(', ')}
-@Transactional methods: ${Array.from(transactionalMethods).join(', ')}`;
+    const compactPayload = {
+      packageName,
+      classCount: classes.length,
+      layerCounts: this.mapToSortedObject(layerCounts),
+      classSamples: this.compactList(classNames, 28),
+      annotations: this.compactList(Array.from(annotations), 16),
+      topExternalDependencies: this.summarizeImports(Array.from(outboundImports)),
+      transactionalMethodCount: transactionalMethods.size,
+      transactionalMethodSamples: this.compactList(
+        Array.from(transactionalMethods).map((method) => this.shortenMethodSignature(method)),
+        10,
+        120
+      )
+    };
+
+    const userPrompt = `Package analysis input: ${JSON.stringify(compactPayload)}`;
 
     try {
       const result = await this.llm.generateJson<{ domain: string; role: string; couplingConcerns: string }>(
@@ -64,10 +91,12 @@ Cross-package Imports: ${Array.from(outboundImports).join(', ')}
         userPrompt, 
         800
       );
-      return {
+      const summary = {
         packageName,
         ...result
       };
+      this.storeCachedSummary(cacheKey, summary);
+      return summary;
     } catch (e) {
       console.warn(`Failed to summarize package ${packageName}, using fallback`, e);
       return {
@@ -77,5 +106,162 @@ Cross-package Imports: ${Array.from(outboundImports).join(', ')}
         couplingConcerns: "Unable to analyze"
       };
     }
+  }
+
+  private compactList(items: string[], limit: number, maxItemLength: number = 100): { items: string[]; omittedCount: number } {
+    const sorted = [...items].sort((left, right) => left.localeCompare(right));
+    const truncatedItems = sorted.slice(0, limit).map((item) =>
+      item.length > maxItemLength ? `${item.slice(0, maxItemLength - 1)}...` : item
+    );
+
+    return {
+      items: truncatedItems,
+      omittedCount: Math.max(0, sorted.length - truncatedItems.length)
+    };
+  }
+
+  private summarizeImports(imports: string[]): { items: string[]; omittedCount: number } {
+    const counts = new Map<string, number>();
+
+    imports.forEach((importName) => {
+      const normalized = this.normalizeImport(importName);
+      counts.set(normalized, (counts.get(normalized) || 0) + 1);
+    });
+
+    const rankedImports = Array.from(counts.entries())
+      .sort((left, right) => {
+        if (right[1] !== left[1]) {
+          return right[1] - left[1];
+        }
+        return left[0].localeCompare(right[0]);
+      })
+      .map(([importName, count]) => count > 1 ? `${importName} (x${count})` : importName);
+
+    return this.compactList(rankedImports, 18, 90);
+  }
+
+  private normalizeImport(importName: string): string {
+    const parts = importName.split('.');
+    if (parts.length <= 3) {
+      return importName;
+    }
+
+    return parts.slice(0, 3).join('.') + '.*';
+  }
+
+  private shortenMethodSignature(method: string): string {
+    return method.replaceAll(/\s+/g, ' ').trim();
+  }
+
+  private mapToSortedObject(values: Map<string, number>): Record<string, number> {
+    return Object.fromEntries(
+      Array.from(values.entries()).sort((left, right) => left[0].localeCompare(right[0]))
+    );
+  }
+
+  private getCacheKey(packageName: string, classes: JavaClass[]): string {
+    const cacheVersion = Summarizer.CACHE_VERSION;
+    const cacheFingerprint = this.hashString(JSON.stringify({
+      cacheVersion,
+      packageName,
+      model: this.llm.getModelName(),
+      classes: classes
+        .map((javaClass) => ({
+          fullyQualifiedName: javaClass.fullyQualifiedName,
+          layer: javaClass.layer || 'util',
+          annotations: [...javaClass.annotations].sort((left, right) => left.localeCompare(right)),
+          externalImports: javaClass.imports
+            .filter((importName) => !importName.startsWith(packageName) && !importName.startsWith('java.') && !importName.startsWith('org.springframework.'))
+            .sort((left, right) => left.localeCompare(right)),
+          transactionalMethods: javaClass.methods
+            .filter((method) => method.includes('@Transactional'))
+            .map((method) => this.shortenMethodSignature(method))
+            .sort((left, right) => left.localeCompare(right)),
+          methodCount: javaClass.methods.length,
+          fieldCount: javaClass.fields.length
+        }))
+        .sort((left, right) => left.fullyQualifiedName.localeCompare(right.fullyQualifiedName))
+    }));
+
+    return `${packageName}:${cacheFingerprint}`;
+  }
+
+  private hashString(value: string): string {
+    let hash = 2166136261;
+
+    for (let index = 0; index < value.length; index += 1) {
+      hash ^= value.codePointAt(index) || 0;
+      hash = Math.imul(hash, 16777619);
+    }
+
+    return (hash >>> 0).toString(16);
+  }
+
+  private getCachedSummary(cacheKey: string): PackageSummary | null {
+    this.loadCache();
+    return Summarizer.cache.get(cacheKey)?.summary || null;
+  }
+
+  private storeCachedSummary(cacheKey: string, summary: PackageSummary): void {
+    this.loadCache();
+    Summarizer.cache.set(cacheKey, { summary, updatedAt: Date.now() });
+    this.pruneCache();
+    this.persistCache();
+  }
+
+  private loadCache(): void {
+    if (Summarizer.cacheLoaded || !this.canUseStorage()) {
+      Summarizer.cacheLoaded = true;
+      return;
+    }
+
+    try {
+      const raw = globalThis.localStorage.getItem(Summarizer.CACHE_KEY);
+      if (!raw) {
+        Summarizer.cacheLoaded = true;
+        return;
+      }
+
+      const parsed = JSON.parse(raw) as Record<string, { summary: PackageSummary; updatedAt: number }>;
+      Summarizer.cache = new Map(Object.entries(parsed));
+    } catch (error) {
+      console.warn('[Summarizer] Failed to load summary cache, starting empty.', error);
+      Summarizer.cache = new Map();
+    } finally {
+      Summarizer.cacheLoaded = true;
+    }
+  }
+
+  private persistCache(): void {
+    if (!this.canUseStorage()) {
+      return;
+    }
+
+    try {
+      const serialized = JSON.stringify(Object.fromEntries(Summarizer.cache.entries()));
+      globalThis.localStorage.setItem(Summarizer.CACHE_KEY, serialized);
+    } catch (error) {
+      console.warn('[Summarizer] Failed to persist summary cache.', error);
+    }
+  }
+
+  private pruneCache(): void {
+    if (Summarizer.cache.size <= Summarizer.MAX_CACHE_ENTRIES) {
+      return;
+    }
+
+    const entriesByAge = Array.from(Summarizer.cache.entries())
+      .sort((left, right) => left[1].updatedAt - right[1].updatedAt);
+
+    while (entriesByAge.length > Summarizer.MAX_CACHE_ENTRIES) {
+      const oldest = entriesByAge.shift();
+      if (oldest) {
+        Summarizer.cache.delete(oldest[0]);
+      }
+    }
+  }
+
+  private canUseStorage(): boolean {
+    return globalThis.localStorage !== undefined;
   }
 }

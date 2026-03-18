@@ -15,7 +15,11 @@ import { ClassRefactoringAnalyzer } from './llm/ClassRefactoringAnalyzer';
 import { AnalysisConfig, DecompositionPlan, JavaClass, BoundedContext, GraphNode, ModuleStructure, RepoInput, ClassRefactoringSuggestion } from '../types';
 
 export class Orchestrator {
-  private config: AnalysisConfig;
+  private readonly config: AnalysisConfig;
+  private static readonly LOCAL_FILE_READ_BATCH_SIZE = 48;
+  private static readonly LOCAL_PARSE_BATCH_SIZE = 6;
+  private static readonly LLM_PACKAGE_SUMMARY_CONCURRENCY = 3;
+  private static readonly LLM_MODULE_STRUCTURE_CONCURRENCY = 2;
 
   constructor(config: AnalysisConfig) {
     this.config = config;
@@ -90,23 +94,42 @@ export class Orchestrator {
         status: 'pending'
       });
 
-      const javaSourceFiles = isLocalRepo
-        ? await localFetcher.fetchJavaFiles(primaryRepo, this.config.options.includeTestFiles)
-        : await repoFetcher.fetchJavaFiles(primaryRepo, this.config.options.includeTestFiles);
-      store.setFileProgress(0, javaSourceFiles.length, '');
-      store.addActivity({ type: 'git', message: `Found ${javaSourceFiles.length} Java files`, status: 'success' });
-
-      store.setPhase(2, `Parsing ${javaSourceFiles.length} Java files locally...`);
       const javaClasses: JavaClass[] = [];
+      if (isLocalRepo) {
+        const localFileEntries = await localFetcher.listJavaFiles(primaryRepo, this.config.options.includeTestFiles);
+        store.setFileProgress(0, localFileEntries.length, '');
+        store.addActivity({ type: 'git', message: `Found ${localFileEntries.length} Java files`, status: 'success' });
+        store.setPhase(2, `Parsing ${localFileEntries.length} Java files locally...`);
 
-      for (let i = 0; i < javaSourceFiles.length; i++) {
-        const file = javaSourceFiles[i];
-        const parsed = springParser.parseSource(file.content, file.path, file.repo);
-        javaClasses.push(parsed);
+        for (let offset = 0; offset < localFileEntries.length; offset += Orchestrator.LOCAL_FILE_READ_BATCH_SIZE) {
+          const fileBatchEntries = localFileEntries.slice(offset, offset + Orchestrator.LOCAL_FILE_READ_BATCH_SIZE);
+          const javaFileBatch = await localFetcher.fetchJavaFileBatch(fileBatchEntries, primaryRepo);
+          const parsedBatch = await this.parseJavaFilesInBatches(
+            javaFileBatch,
+            springParser,
+            Orchestrator.LOCAL_PARSE_BATCH_SIZE
+          );
+          javaClasses.push(...parsedBatch);
 
-        // Throttle progress updates to avoid flooding the activity log
-        if (i % 10 === 0 || i === javaSourceFiles.length - 1) {
-          store.setFileProgress(i + 1, javaSourceFiles.length, file.path);
+          const processedCount = Math.min(offset + fileBatchEntries.length, localFileEntries.length);
+          const lastProcessedPath = fileBatchEntries.at(-1)?.path || '';
+          store.setFileProgress(processedCount, localFileEntries.length, lastProcessedPath);
+        }
+      } else {
+        const javaSourceFiles = await repoFetcher.fetchJavaFiles(primaryRepo, this.config.options.includeTestFiles);
+        store.setFileProgress(0, javaSourceFiles.length, '');
+        store.addActivity({ type: 'git', message: `Found ${javaSourceFiles.length} Java files`, status: 'success' });
+
+        store.setPhase(2, `Parsing ${javaSourceFiles.length} Java files locally...`);
+
+        for (let i = 0; i < javaSourceFiles.length; i++) {
+          const file = javaSourceFiles[i];
+          const parsed = springParser.parseSource(file.content, file.path, file.repo);
+          javaClasses.push(parsed);
+
+          if (i % 10 === 0 || i === javaSourceFiles.length - 1) {
+            store.setFileProgress(i + 1, javaSourceFiles.length, file.path);
+          }
         }
       }
 
@@ -170,20 +193,26 @@ export class Orchestrator {
         store.setLLMProgress(0, packageMap.size, '');
         store.addActivity({ type: 'llm', message: `Starting LLM analysis of ${packageMap.size} packages...`, status: 'pending' });
 
-        let i = 0;
-        for (const [pkgName, classes] of packageMap.entries()) {
-          i++;
-          store.setPhase(4, `Summarizing package ${pkgName} (${i}/${packageMap.size})...`);
-          store.setPackageProgress(i - 1, packageMap.size, pkgName);
-          store.setLLMProgress(i - 1, packageMap.size, pkgName);
+        const packageEntries = Array.from(packageMap.entries());
+        let completedPackageSummaries = 0;
 
-          const summary = await summarizer!.summarizePackage(pkgName, classes);
-          summaries.push(summary);
+        summaries.push(...await this.mapInBatches(
+          packageEntries,
+          Orchestrator.LLM_PACKAGE_SUMMARY_CONCURRENCY,
+          async ([pkgName, classes], index) => {
+            store.setPhase(4, `Summarizing package ${pkgName} (${index + 1}/${packageEntries.length})...`);
+            store.setLLMProgress(completedPackageSummaries, packageEntries.length, pkgName);
 
-          store.setPackageProgress(i, packageMap.size, pkgName);
-          store.setLLMProgress(i, packageMap.size, '');
-          store.addActivity({ type: 'llm', message: `Analyzed package: ${pkgName.split('.').slice(-2).join('.')}`, status: 'success' });
-        }
+            const summary = await summarizer!.summarizePackage(pkgName, classes);
+
+            completedPackageSummaries += 1;
+            store.setPackageProgress(completedPackageSummaries, packageEntries.length, pkgName);
+            store.setLLMProgress(completedPackageSummaries, packageEntries.length, '');
+            store.addActivity({ type: 'llm', message: `Analyzed package: ${pkgName.split('.').slice(-2).join('.')}`, status: 'success' });
+
+            return summary;
+          }
+        ));
 
         store.addActivity({ type: 'llm', message: `Completed ${packageMap.size} LLM package summaries`, status: 'success' });
         // Phase 5: Decomposition Reasoning
@@ -204,18 +233,25 @@ export class Orchestrator {
         store.addActivity({ type: 'llm', message: 'Generating Maven module structures for each service...', status: 'pending' });
         store.setLLMProgress(0, boundedContexts.length, 'Generating module structures...');
 
-        enrichedContexts = await Promise.all(
-          boundedContexts.map(async (ctx, idx) => {
+        let completedStructures = 0;
+        enrichedContexts = await this.mapInBatches(
+          boundedContexts,
+          Orchestrator.LLM_MODULE_STRUCTURE_CONCURRENCY,
+          async (ctx) => {
             try {
-              store.setLLMProgress(idx, boundedContexts.length, ctx.suggestedServiceName);
+              store.setLLMProgress(completedStructures, boundedContexts.length, ctx.suggestedServiceName);
               const structure = await moduleStructureGen!.generateForContext(ctx, baseGroupId);
+              completedStructures += 1;
+              store.setLLMProgress(completedStructures, boundedContexts.length, '');
               store.addActivity({ type: 'llm', message: `Generated structure for ${ctx.suggestedServiceName}`, status: 'success' });
               return { ...ctx, proposedModuleStructure: structure };
-            } catch (e) {
+            } catch {
+              completedStructures += 1;
+              store.setLLMProgress(completedStructures, boundedContexts.length, '');
               store.addActivity({ type: 'info', message: `Skipped module structure for ${ctx.suggestedServiceName}`, status: 'success' });
               return ctx;
             }
-          })
+          }
         );
         store.setLLMProgress(boundedContexts.length, boundedContexts.length, '');
 
@@ -517,6 +553,45 @@ export class Orchestrator {
     store.setAnalyzing(false);
     store.setPhase(6, 'Analysis Complete!');
     return plan;
+  }
+
+  private async parseJavaFilesInBatches(
+    javaFiles: Array<{ path: string; content: string; repo: string }>,
+    springParser: SpringAnnotationParser,
+    batchSize: number
+  ): Promise<JavaClass[]> {
+    const parsedClasses: JavaClass[] = [];
+
+    for (let offset = 0; offset < javaFiles.length; offset += batchSize) {
+      const parseBatch = javaFiles.slice(offset, offset + batchSize);
+      const parsedBatch = await Promise.all(
+        parseBatch.map(async (file) => springParser.parseSource(file.content, file.path, file.repo))
+      );
+      parsedClasses.push(...parsedBatch);
+    }
+
+    return parsedClasses;
+  }
+
+  private async mapInBatches<T, R>(
+    items: T[],
+    batchSize: number,
+    worker: (item: T, index: number) => Promise<R>
+  ): Promise<R[]> {
+    const results = new Array<R>(items.length);
+
+    for (let offset = 0; offset < items.length; offset += batchSize) {
+      const batch = items.slice(offset, offset + batchSize);
+      const batchResults = await Promise.all(
+        batch.map((item, index) => worker(item, offset + index))
+      );
+
+      batchResults.forEach((result, index) => {
+        results[offset + index] = result;
+      });
+    }
+
+    return results;
   }
 
   private getRepoLabel(repo: RepoInput): string {

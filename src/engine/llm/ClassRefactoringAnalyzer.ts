@@ -17,7 +17,9 @@ interface LLMRefactoringResponse {
 }
 
 export class ClassRefactoringAnalyzer {
-  private llm: LLMClient;
+  private readonly llm: LLMClient;
+  private static readonly ANALYSIS_BATCH_SIZE = 8;
+  private static readonly ANALYSIS_CONCURRENCY = 2;
 
   constructor(llm: LLMClient) {
     this.llm = llm;
@@ -47,13 +49,16 @@ export class ClassRefactoringAnalyzer {
     const large = ClassRefactoringAnalyzer.filterLargeClasses(classes, thresholds);
     if (large.length === 0) return [];
 
-    const results: ClassRefactoringSuggestion[] = [];
-    const BATCH = 5;
+    const batches: JavaClass[][] = [];
+    for (let i = 0; i < large.length; i += ClassRefactoringAnalyzer.ANALYSIS_BATCH_SIZE) {
+      batches.push(large.slice(i, i + ClassRefactoringAnalyzer.ANALYSIS_BATCH_SIZE));
+    }
 
-    for (let i = 0; i < large.length; i += BATCH) {
-      const batch = large.slice(i, i + BATCH);
-      const batchResults = await this.analyzeBatch(batch);
-      results.push(...batchResults);
+    const results: ClassRefactoringSuggestion[] = [];
+    for (let i = 0; i < batches.length; i += ClassRefactoringAnalyzer.ANALYSIS_CONCURRENCY) {
+      const concurrentBatches = batches.slice(i, i + ClassRefactoringAnalyzer.ANALYSIS_CONCURRENCY);
+      const batchResults = await Promise.all(concurrentBatches.map((batch) => this.analyzeBatch(batch)));
+      results.push(...batchResults.flat());
     }
 
     return results;

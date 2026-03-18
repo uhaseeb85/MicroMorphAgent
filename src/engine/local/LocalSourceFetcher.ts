@@ -1,8 +1,9 @@
 import type { RepoInput } from '../../types';
 import type { JavaFile } from '../github/RepoFetcher';
 import { getLocalDirectory } from './LocalSourceSession';
+import { RateLimiter } from '../../utils/rateLimiter';
 
-interface LocalFileEntry {
+export interface LocalFileEntry {
   path: string;
   handle: FileSystemFileHandle;
 }
@@ -14,34 +15,42 @@ interface IterableDirectoryHandle extends FileSystemDirectoryHandle {
 }
 
 export class LocalSourceFetcher {
+  private readonly readLimiter = new RateLimiter(8, 10);
+
   async fetchJavaFiles(repoInput: RepoInput, includeTestFiles: boolean): Promise<JavaFile[]> {
+    const javaEntries = await this.listJavaFiles(repoInput, includeTestFiles);
+    return this.fetchJavaFileBatch(javaEntries, repoInput);
+  }
+
+  async listJavaFiles(repoInput: RepoInput, includeTestFiles: boolean): Promise<LocalFileEntry[]> {
     const rootHandle = this.getRootHandle(repoInput);
     const fileEntries = await this.collectFiles(rootHandle);
 
-    const javaFiles = fileEntries.filter((entry) => {
+    return fileEntries.filter((entry) => {
       if (!entry.path.endsWith('.java')) {
         return false;
       }
 
       return includeTestFiles || !/(^|\/)src\/test\//.test(entry.path);
     });
+  }
 
-    return Promise.all(
-      javaFiles.map(async (entry) => {
-        const file = await entry.handle.getFile();
-        const content = await file.text();
-        return {
-          path: entry.path,
-          content,
-          repo: repoInput.displayName || repoInput.url
-        };
-      })
-    );
+  async fetchJavaFileBatch(entries: LocalFileEntry[], repoInput: RepoInput): Promise<JavaFile[]> {
+    return this.readLimiter.batchFetch(entries, async (entry) => {
+      const file = await entry.handle.getFile();
+      const content = await file.text();
+
+      return {
+        path: entry.path,
+        content,
+        repo: repoInput.displayName || repoInput.url
+      };
+    });
   }
 
   async fetchFileContent(repoInput: RepoInput, relativePath: string): Promise<string> {
     const rootHandle = this.getRootHandle(repoInput);
-    const normalizedPath = relativePath.replace(/\\/g, '/').replace(/^\//, '');
+    const normalizedPath = relativePath.replaceAll('\\', '/').replace(/^\//, '');
     const segments = normalizedPath.split('/').filter(Boolean);
 
     if (segments.length === 0) {
