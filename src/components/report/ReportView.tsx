@@ -3,6 +3,7 @@ import type { DecompositionPlan, BoundedContext } from '../../types';
 import { ModuleStructureView } from './ModuleStructureView';
 import { ExtractionRoadmap } from './ExtractionRoadmap';
 import { TransactionalRiskPanel } from './TransactionalRiskPanel';
+import { ClassRefactoringPanel } from './ClassRefactoringPanel';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { ThemeToggle } from '../layout/ThemeToggle';
@@ -106,6 +107,41 @@ function ReportExportDocument({ plan }: { plan: DecompositionPlan }) {
           ))
         )}
       </section>
+
+      {plan.classRefactoringSuggestions && plan.classRefactoringSuggestions.length > 0 && (
+        <section style={sectionStyle}>
+          <h2 style={{ marginTop: 0, fontSize: 22 }}>SRP Refactoring Suggestions</h2>
+          {plan.classRefactoringSuggestions.map((suggestion, index) => {
+            const shortName = suggestion.originalClass.split('.').pop();
+            return (
+              <div key={`${suggestion.originalClass}-${index}`} style={{ padding: '16px 0', borderTop: index === 0 ? 'none' : '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
+                  <div>
+                    <h3 style={{ margin: '0 0 4px', fontSize: 18, fontFamily: 'monospace' }}>{shortName}</h3>
+                    <p style={{ margin: '0 0 6px', fontSize: 11, color: '#64748b', fontFamily: 'monospace' }}>{suggestion.originalClass}</p>
+                    {suggestion.boundedContext && (
+                      <span style={{ ...badgeStyle, background: '#f0f9ff', color: '#0369a1' }}>{suggestion.boundedContext}</span>
+                    )}
+                    <span style={{ ...badgeStyle, background: suggestion.sizeSignal === 'very-large' ? '#fff1f2' : '#fffbeb', color: suggestion.sizeSignal === 'very-large' ? '#9f1239' : '#92400e' }}>
+                      {suggestion.sizeSignal === 'very-large' ? 'Very Large' : 'Large'} · {suggestion.methodCount}m / {suggestion.fieldCount}f
+                    </span>
+                  </div>
+                </div>
+                <p style={{ margin: '8px 0 12px', fontSize: 13, color: '#334155', lineHeight: 1.6 }}>{suggestion.rationale}</p>
+                <div style={{ marginTop: 8 }}>
+                  <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Suggested Classes:</p>
+                  {suggestion.suggestedClasses.map((cls, ci) => (
+                    <div key={ci} style={{ padding: '8px 12px', marginBottom: 6, background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                      <p style={{ margin: '0 0 3px', fontSize: 14, fontWeight: 700, fontFamily: 'monospace' }}>{cls.name}</p>
+                      <p style={{ margin: 0, fontSize: 12, color: '#475569' }}>{cls.responsibility}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </section>
+      )}
     </div>
   );
 }
@@ -296,7 +332,7 @@ function ServiceDetail({ context, index, total }: { context: BoundedContext; ind
 
 export function ReportView({ plan, onNewAnalysis }: { plan: DecompositionPlan; onNewAnalysis?: () => void }) {
   const [activeService, setActiveService] = useState(0);
-  const [activeTab, setActiveTab]         = useState<'services' | 'roadmap' | 'risks'>('services');
+  const [activeTab, setActiveTab]         = useState<'services' | 'roadmap' | 'risks' | 'refactoring'>('services');
   const reportRef = useRef<HTMLDivElement>(null);
   const exportRef = useRef<HTMLDivElement>(null);
 
@@ -342,9 +378,10 @@ export function ReportView({ plan, onNewAnalysis }: { plan: DecompositionPlan; o
   };
 
   const tabs = [
-    { id: 'services' as const, label: `Services (${plan.boundedContexts.length})` },
-    { id: 'roadmap'  as const, label: `Extraction Roadmap` },
-    { id: 'risks'    as const, label: `Domain Risks (${plan.transactionalRisks.length})` },
+    { id: 'services'     as const, label: `Services (${plan.boundedContexts.length})` },
+    { id: 'roadmap'      as const, label: `Extraction Roadmap` },
+    { id: 'risks'        as const, label: `Domain Risks (${plan.transactionalRisks.length})` },
+    { id: 'refactoring'  as const, label: `Refactoring (${(plan.classRefactoringSuggestions ?? []).length})` },
   ];
 
   return (
@@ -390,6 +427,11 @@ export function ReportView({ plan, onNewAnalysis }: { plan: DecompositionPlan; o
                 <div className="text-right">
                     <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Risk Level</div>
                     <div className="text-xs font-bold text-amber-600">{plan.transactionalRisks.length} Detected</div>
+                </div>
+                <div className="w-[1px] h-6 bg-border" />
+                <div className="text-right">
+                    <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Refactoring</div>
+                    <div className="text-xs font-bold text-amber-600">{(plan.classRefactoringSuggestions ?? []).length} Hints</div>
                 </div>
             </div>
         </div>
@@ -475,6 +517,12 @@ export function ReportView({ plan, onNewAnalysis }: { plan: DecompositionPlan; o
             {activeTab === 'risks' && (
               <div className="max-w-4xl mx-auto">
                 <TransactionalRiskPanel risks={plan.transactionalRisks} />
+              </div>
+            )}
+
+            {activeTab === 'refactoring' && (
+              <div className="max-w-4xl mx-auto">
+                <ClassRefactoringPanel suggestions={plan.classRefactoringSuggestions ?? []} />
               </div>
             )}
           </div>

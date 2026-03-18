@@ -11,7 +11,8 @@ import { Summarizer, PackageSummary } from './llm/Summarizer';
 import { BoundedContextAnalyzer } from './llm/BoundedContextAnalyzer';
 import { RoadmapGenerator, RoadmapResponse } from './llm/RoadmapGenerator';
 import { ModuleStructureGenerator } from './llm/ModuleStructureGenerator';
-import { AnalysisConfig, DecompositionPlan, JavaClass, BoundedContext, GraphNode, ModuleStructure, RepoInput } from '../types';
+import { ClassRefactoringAnalyzer } from './llm/ClassRefactoringAnalyzer';
+import { AnalysisConfig, DecompositionPlan, JavaClass, BoundedContext, GraphNode, ModuleStructure, RepoInput, ClassRefactoringSuggestion } from '../types';
 
 export class Orchestrator {
   private config: AnalysisConfig;
@@ -54,6 +55,7 @@ export class Orchestrator {
       const contextAnalyzer = llmClient ? new BoundedContextAnalyzer(llmClient) : null;
       const roadmapGenerator = llmClient ? new RoadmapGenerator(llmClient) : null;
       const moduleStructureGen = llmClient ? new ModuleStructureGenerator(llmClient) : null;
+      const refactoringAnalyzer = llmClient ? new ClassRefactoringAnalyzer(llmClient) : null;
 
       // Phase 1: POM parsing
       store.setPhase(1, 'Discovering repository structure and analyzing Maven/Gradle files...');
@@ -152,8 +154,7 @@ export class Orchestrator {
       const summaries: PackageSummary[] = [];
       let boundedContexts: BoundedContext[] = [];
       let roadmapAndRisks: RoadmapResponse;
-      let enrichedContexts: BoundedContext[] = [];
-
+      let enrichedContexts: BoundedContext[] = [];      let classRefactoringSuggestions: ClassRefactoringSuggestion[] = [];
       if (!isStaticMode) {
         // Phase 4: LLM Package Summarization
         store.setPhase(4, 'Generating semantic package summaries via LLM...');
@@ -217,6 +218,30 @@ export class Orchestrator {
           })
         );
         store.setLLMProgress(boundedContexts.length, boundedContexts.length, '');
+
+        // Phase 5c: SRP Refactoring Analysis
+        const srpThresholds = {
+          methodThreshold: this.config.options.srpMethodThreshold,
+          fieldThreshold: this.config.options.srpFieldThreshold
+        };
+        const largeClassCount = ClassRefactoringAnalyzer.filterLargeClasses(javaClasses, srpThresholds).length;
+        if (largeClassCount > 0) {
+          store.setPhase(5, `Analyzing ${largeClassCount} large classes for SRP violations...`);
+          store.addActivity({ type: 'llm', message: `Detecting SRP violations in ${largeClassCount} oversized classes...`, status: 'pending' });
+          classRefactoringSuggestions = await refactoringAnalyzer!.analyze(javaClasses, srpThresholds);
+          // Enrich with bounded context name
+          for (const suggestion of classRefactoringSuggestions) {
+            const matchingCtx = enrichedContexts.find((ctx) =>
+              ctx.packages.some((pkg) =>
+                suggestion.packageName === pkg || suggestion.packageName.startsWith(`${pkg}.`)
+              )
+            );
+            if (matchingCtx) suggestion.boundedContext = matchingCtx.name;
+          }
+          store.addActivity({ type: 'llm', message: `Found ${classRefactoringSuggestions.length} refactoring opportunities`, status: 'success' });
+        } else {
+          store.addActivity({ type: 'info', message: 'No classes exceeded SRP thresholds — monolith classes are well-sized.', status: 'success' });
+        }
       } else {
         store.setPhase(4, 'Static mode: deriving package boundaries from code structure...');
         store.addActivity({ type: 'info', message: 'Static mode enabled - using structural analysis only (no LLM calls)', status: 'pending' });
@@ -235,6 +260,23 @@ export class Orchestrator {
           proposedModuleStructure: this.generateStaticModuleStructure(ctx, baseGroupId)
         }));
         store.addActivity({ type: 'graph', message: `Generated ${enrichedContexts.length} heuristic module blueprints`, status: 'success' });
+
+        // Static SRP analysis
+        const srpThresholds = {
+          methodThreshold: this.config.options.srpMethodThreshold,
+          fieldThreshold: this.config.options.srpFieldThreshold
+        };
+        const staticRefactoringAnalyzer = new ClassRefactoringAnalyzer(null as any);
+        classRefactoringSuggestions = staticRefactoringAnalyzer.analyzeHeuristic(javaClasses, srpThresholds);
+        for (const suggestion of classRefactoringSuggestions) {
+          const matchingCtx = enrichedContexts.find((ctx) =>
+            ctx.packages.some((pkg) =>
+              suggestion.packageName === pkg || suggestion.packageName.startsWith(`${pkg}.`)
+            )
+          );
+          if (matchingCtx) suggestion.boundedContext = matchingCtx.name;
+        }
+        store.addActivity({ type: 'graph', message: `Detected ${classRefactoringSuggestions.length} heuristic refactoring candidates`, status: 'success' });
       }
 
       const plan: DecompositionPlan = {
@@ -243,6 +285,7 @@ export class Orchestrator {
         transactionalRisks: roadmapAndRisks.transactionalRisks,
         sharedLibAssessment: [],
         dependencyGraph: graphNodes,
+        classRefactoringSuggestions,
         generatedAt: new Date().toISOString(),
         reposAnalyzed: this.config.repos.map((repo) => this.getRepoLabel(repo))
       };
@@ -328,6 +371,10 @@ export class Orchestrator {
     await sleep(900);
     store.addActivity({ type: 'llm', message: 'Generated Maven module structures for Vet Service', status: 'success' });
 
+    store.setPhase(5, 'Analyzing large classes for SRP violations...');
+    await sleep(1100);
+    store.addActivity({ type: 'llm', message: 'Detected 2 SRP refactoring candidates: OwnerController, ClinicService', status: 'success' });
+
     // Final Plan
     const plan: DecompositionPlan = {
       generatedAt: new Date().toISOString(),
@@ -347,6 +394,68 @@ export class Orchestrator {
       extractionRoadmap: [
         { order: 1, boundedContext: 'Customer', estimatedEffort: 'weeks', blockers: [], patternRecommendations: ['Strangler Fig'], sagaRequired: true },
         { order: 2, boundedContext: 'Veterinary', estimatedEffort: 'days', blockers: [], patternRecommendations: ['Direct Migration'], sagaRequired: false }
+      ],
+      classRefactoringSuggestions: [
+        {
+          originalClass: 'org.springframework.samples.petclinic.owner.OwnerController',
+          filePath: 'src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java',
+          packageName: 'org.springframework.samples.petclinic.owner',
+          methodCount: 12,
+          fieldCount: 4,
+          sizeSignal: 'very-large' as const,
+          boundedContext: 'Customer',
+          rationale: 'OwnerController mixes HTTP request handling, business validation, and view preparation logic. Splitting into query and command handlers enables cleaner microservice boundaries and improves testability.',
+          suggestedClasses: [
+            {
+              name: 'OwnerQueryHandler',
+              responsibility: 'Handles all read operations: finding owners by ID, listing all owners, and search queries.',
+              methods: ['findOwner(int ownerId): Owner', 'initFindForm(): String', 'processFindForm(Owner owner, BindingResult result): String'],
+              fields: ['private OwnerRepository owners']
+            },
+            {
+              name: 'OwnerCommandHandler',
+              responsibility: 'Handles all write operations: creating and updating owners and their pets.',
+              methods: ['initCreationForm(Map<String,Object> model): String', 'processCreationForm(Owner owner, BindingResult result): String', 'initUpdateOwnerForm(int ownerId, Model model): String', 'processUpdateOwnerForm(Owner owner, BindingResult result, int ownerId): String'],
+              fields: ['private OwnerRepository owners']
+            },
+            {
+              name: 'PetCommandHandler',
+              responsibility: 'Manages all pet lifecycle operations: adding pets to owners and recording visits.',
+              methods: ['initPetTypes(): Collection<PetType>', 'initNewPetForm(Owner owner, Model model): String', 'processNewPetForm(Owner owner, Pet pet, BindingResult result): String', 'initUpdatePetForm(int petId, Model model): String', 'processUpdatePetForm(Pet pet, BindingResult result, int ownerId): String'],
+              fields: ['private OwnerRepository owners', 'private PetTypeFormatter petTypeFormatter']
+            }
+          ]
+        },
+        {
+          originalClass: 'org.springframework.samples.petclinic.system.ClinicService',
+          filePath: 'src/main/java/org/springframework/samples/petclinic/system/ClinicService.java',
+          packageName: 'org.springframework.samples.petclinic.system',
+          methodCount: 9,
+          fieldCount: 5,
+          sizeSignal: 'large' as const,
+          boundedContext: 'Veterinary',
+          rationale: 'ClinicService acts as a catch-all facade aggregating operations for owners, pets, vets, and visits. Each of these domains will become a separate microservice, so splitting them now reduces extraction risk.',
+          suggestedClasses: [
+            {
+              name: 'OwnerDomainService',
+              responsibility: 'Manages owner and pet data persistence and business rules within the Customer bounded context.',
+              methods: ['findOwnerById(int id): Owner', 'saveOwner(Owner owner): void', 'findPetTypes(): Collection<PetType>'],
+              fields: ['private OwnerRepository ownerRepository', 'private PetRepository petRepository']
+            },
+            {
+              name: 'VetDomainService',
+              responsibility: 'Manages veterinarian data and specialties within the Veterinary bounded context.',
+              methods: ['findVets(): Collection<Vet>'],
+              fields: ['private VetRepository vetRepository']
+            },
+            {
+              name: 'VisitDomainService',
+              responsibility: 'Handles visit scheduling and retrieval across pet and owner associations.',
+              methods: ['findVisitsByPetId(int petId): Collection<Visit>', 'saveVisit(Visit visit): void'],
+              fields: ['private VisitRepository visitRepository']
+            }
+          ]
+        }
       ],
       boundedContexts: [
         {

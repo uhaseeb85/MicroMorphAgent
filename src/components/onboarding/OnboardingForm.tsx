@@ -55,6 +55,8 @@ export function OnboardingForm({ onSubmit, embedded }: { onSubmit?: () => void; 
   const [repos, setRepos] = useState<RepoInput[]>(saved?.repos?.length ? saved.repos : [{ sourceType: 'github', url: '', role: 'primary' }]);
   const [granularity, setGranularity] = useState<Granularity>(saved?.options?.granularity || 'balanced');
   const [analysisMode, setAnalysisMode] = useState<AnalysisMode>(saved?.options?.analysisMode || 'ai');
+  const [srpMethodThreshold, setSrpMethodThreshold] = useState<number>(saved?.options?.srpMethodThreshold ?? 8);
+  const [srpFieldThreshold, setSrpFieldThreshold] = useState<number>(saved?.options?.srpFieldThreshold ?? 10);
   const [sourceMode, setSourceMode] = useState<SourceMode>(saved?.repos?.[0]?.sourceType === 'local' ? 'local' : 'github');
   const [localDirectoryHandle, setLocalDirectoryHandle] = useState<FileSystemDirectoryHandle | null>(null);
   const [localFolderName, setLocalFolderName] = useState('');
@@ -144,7 +146,9 @@ export function OnboardingForm({ onSubmit, embedded }: { onSubmit?: () => void; 
         gitCoChangeWindowDays: 90,
         granularity,
         analysisMode,
-        llmModel: openRouterModel
+        llmModel: openRouterModel,
+        srpMethodThreshold: Math.max(1, srpMethodThreshold),
+        srpFieldThreshold: Math.max(1, srpFieldThreshold)
       }
     };
 
@@ -292,6 +296,45 @@ export function OnboardingForm({ onSubmit, embedded }: { onSubmit?: () => void; 
                 <div className="text-[10px] mt-0.5 opacity-70 uppercase tracking-tighter">{opt.sub}</div>
               </button>
             ))}
+          </div>
+        </div>
+
+        {/* SRP Thresholds */}
+        <div className="space-y-4">
+          <label className="text-[11px] font-bold uppercase tracking-widest flex items-center gap-2 text-muted-foreground">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            SRP Refactoring Thresholds
+          </label>
+          <p className="text-[10px] text-muted-foreground font-medium -mt-1">
+            Classes exceeding either threshold will be analyzed for Single Responsibility violations and split suggestions.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="neo-inset rounded-2xl px-4 py-3 space-y-1.5">
+              <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground block">
+                Method Count ≥
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={100}
+                className="neo-field w-full rounded-xl px-3 py-2 text-sm font-mono outline-none"
+                value={srpMethodThreshold}
+                onChange={e => setSrpMethodThreshold(Number(e.target.value) || 1)}
+              />
+            </div>
+            <div className="neo-inset rounded-2xl px-4 py-3 space-y-1.5">
+              <label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground block">
+                Field Count ≥
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={100}
+                className="neo-field w-full rounded-xl px-3 py-2 text-sm font-mono outline-none"
+                value={srpFieldThreshold}
+                onChange={e => setSrpFieldThreshold(Number(e.target.value) || 1)}
+              />
+            </div>
           </div>
         </div>
 

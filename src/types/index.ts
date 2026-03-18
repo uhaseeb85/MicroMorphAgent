@@ -24,6 +24,8 @@ export interface AnalysisOptions {
   llmModel: string;
   granularity: 'coarse' | 'balanced' | 'fine';
   analysisMode: 'ai' | 'static' | 'demo';
+  srpMethodThreshold: number;
+  srpFieldThreshold: number;
 }
 
 export interface JavaClass {
@@ -64,12 +66,32 @@ export interface SharedComponent {
   rationale: string;
 }
 
+export interface SuggestedSRPClass {
+  name: string;
+  responsibility: string;
+  methods: string[];
+  fields: string[];
+}
+
+export interface ClassRefactoringSuggestion {
+  originalClass: string;
+  filePath: string;
+  packageName: string;
+  methodCount: number;
+  fieldCount: number;
+  sizeSignal: 'large' | 'very-large';
+  suggestedClasses: SuggestedSRPClass[];
+  rationale: string;
+  boundedContext?: string;
+}
+
 export interface DecompositionPlan {
   boundedContexts: BoundedContext[];
   extractionRoadmap: ExtractionStep[];
   transactionalRisks: TransactionalRisk[];
   sharedLibAssessment: SharedComponent[];
   dependencyGraph: GraphNode[];
+  classRefactoringSuggestions: ClassRefactoringSuggestion[];
   generatedAt: string;
   reposAnalyzed: string[];
 }

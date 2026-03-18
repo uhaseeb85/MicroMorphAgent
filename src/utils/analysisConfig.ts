@@ -33,7 +33,9 @@ export function normalizeAnalysisConfig(raw: unknown): AnalysisConfig | null {
       gitCoChangeWindowDays: candidate.options?.gitCoChangeWindowDays || 90,
       llmModel: candidate.options?.llmModel || 'anthropic/claude-3.7-sonnet',
       granularity: candidate.options?.granularity || 'balanced',
-      analysisMode: candidate.options?.analysisMode || 'ai'
+      analysisMode: candidate.options?.analysisMode || 'ai',
+      srpMethodThreshold: candidate.options?.srpMethodThreshold ?? 8,
+      srpFieldThreshold: candidate.options?.srpFieldThreshold ?? 10
     }
   };
 }

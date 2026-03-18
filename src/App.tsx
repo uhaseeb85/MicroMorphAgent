@@ -22,6 +22,8 @@ const DEMO_CONFIG: AnalysisConfig = {
     llmModel: 'anthropic/claude-3.7-sonnet',
     granularity: 'balanced',
     analysisMode: 'demo',
+    srpMethodThreshold: 8,
+    srpFieldThreshold: 10,
   },
 };
 
