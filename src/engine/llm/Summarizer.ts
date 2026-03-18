@@ -36,6 +36,9 @@ export class Summarizer {
     const annotations = new Set<string>();
     const outboundImports = new Set<string>();
     const transactionalMethods = new Set<string>();
+    const endpointMappings: string[] = [];
+    const injectionSummary = { constructor: 0, field: 0, setter: 0 };
+    const supertypeSummary: string[] = [];
     const layerCounts = new Map<string, number>();
 
     classes.forEach(c => {
@@ -47,11 +50,41 @@ export class Summarizer {
            outboundImports.add(i);
         }
       });
-      c.methods.forEach(m => {
-        if (m.includes('@Transactional')) {
-          transactionalMethods.add(m);
+
+      // Structured transactional methods
+      if (c.transactionalMethods && c.transactionalMethods.length > 0) {
+        for (const tm of c.transactionalMethods) {
+          const props = [tm.methodName];
+          if (tm.propagation) props.push(`propagation=${tm.propagation}`);
+          if (tm.readOnly) props.push('readOnly');
+          transactionalMethods.add(props.join(' '));
         }
-      });
+      } else {
+        // Fallback for classes parsed before enrichment
+        c.methods.forEach(m => {
+          if (m.includes('@Transactional')) {
+            transactionalMethods.add(m);
+          }
+        });
+      }
+
+      // Endpoint mappings
+      for (const ep of c.endpointMappings ?? []) {
+        endpointMappings.push(`${ep.httpMethod} ${ep.path}`);
+      }
+
+      // Injection mechanism breakdown
+      for (const ip of c.injectionPoints ?? []) {
+        injectionSummary[ip.mechanism] += 1;
+      }
+
+      // Superclass / interfaces
+      if (c.superClass) {
+        supertypeSummary.push(`${c.fullyQualifiedName.split('.').pop()} extends ${c.superClass.rawType}`);
+      }
+      for (const iface of c.interfaces ?? []) {
+        supertypeSummary.push(`${c.fullyQualifiedName.split('.').pop()} implements ${iface}`);
+      }
     });
 
     const systemPrompt = `You are a strict Spring Boot analysis tool computing package summaries.
@@ -80,7 +113,11 @@ The input may contain representative samples and aggregated counts for large pac
         Array.from(transactionalMethods).map((method) => this.shortenMethodSignature(method)),
         10,
         120
-      )
+      ),
+      endpointCount: endpointMappings.length,
+      endpointSamples: this.compactList(endpointMappings, 10, 80),
+      injectionMechanisms: injectionSummary,
+      supertypeSamples: this.compactList(supertypeSummary, 10, 120)
     };
 
     const userPrompt = `Package analysis input: ${JSON.stringify(compactPayload)}`;
@@ -173,10 +210,11 @@ The input may contain representative samples and aggregated counts for large pac
           externalImports: javaClass.imports
             .filter((importName) => !importName.startsWith(packageName) && !importName.startsWith('java.') && !importName.startsWith('org.springframework.'))
             .sort((left, right) => left.localeCompare(right)),
-          transactionalMethods: javaClass.methods
-            .filter((method) => method.includes('@Transactional'))
-            .map((method) => this.shortenMethodSignature(method))
+          transactionalMethods: (javaClass.transactionalMethods ?? [])
+            .map((tm) => `${tm.methodName}${tm.propagation ? `:${tm.propagation}` : ''}${tm.readOnly ? ':ro' : ''}`)
             .sort((left, right) => left.localeCompare(right)),
+          endpointCount: javaClass.endpointMappings?.length ?? 0,
+          injectionCount: javaClass.injectionPoints?.length ?? 0,
           methodCount: javaClass.methods.length,
           fieldCount: javaClass.fields.length
         }))

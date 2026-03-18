@@ -59,7 +59,7 @@ export class DependencyGraphBuilder {
   }
 
   private createNode(javaClass: JavaClass): GraphNode {
-    const transactional = javaClass.methods.some(m => m.includes('@Transactional')) ||
+    const transactional = (javaClass.transactionalMethods?.length ?? 0) > 0 ||
       javaClass.annotations.some(a => a.includes('@Transactional'));
 
     return {
@@ -109,6 +109,52 @@ export class DependencyGraphBuilder {
         );
         if (matchedTarget && matchedTarget !== javaClass.fullyQualifiedName) {
           this.addDependency(javaClass.fullyQualifiedName, matchedTarget, nodes, outboundDepsByNode, inboundDepsByNode);
+        }
+      }
+
+      // Injection-point edges (constructor, field, setter)
+      for (const ip of javaClass.injectionPoints ?? []) {
+        const resolved = this.resolveTypeReference(
+          javaClass, ip.type.replace(/<.*>$/, ''), nodes,
+          explicitImports, wildcardImports, classesByPackage, classesBySimpleName
+        );
+        if (resolved && resolved !== javaClass.fullyQualifiedName) {
+          this.addDependency(javaClass.fullyQualifiedName, resolved, nodes, outboundDepsByNode, inboundDepsByNode);
+        }
+      }
+
+      // Superclass edge
+      if (javaClass.superClass) {
+        const resolved = this.resolveTypeReference(
+          javaClass, javaClass.superClass.rawType, nodes,
+          explicitImports, wildcardImports, classesByPackage, classesBySimpleName
+        );
+        if (resolved && resolved !== javaClass.fullyQualifiedName) {
+          this.addDependency(javaClass.fullyQualifiedName, resolved, nodes, outboundDepsByNode, inboundDepsByNode);
+        }
+      }
+
+      // Interface edges
+      for (const iface of javaClass.interfaces ?? []) {
+        const resolved = this.resolveTypeReference(
+          javaClass, iface, nodes,
+          explicitImports, wildcardImports, classesByPackage, classesBySimpleName
+        );
+        if (resolved && resolved !== javaClass.fullyQualifiedName) {
+          this.addDependency(javaClass.fullyQualifiedName, resolved, nodes, outboundDepsByNode, inboundDepsByNode);
+        }
+      }
+
+      // Generic supertype type-argument edges
+      for (const gst of javaClass.genericSuperTypes ?? []) {
+        for (const typeArg of gst.typeArgs) {
+          const resolved = this.resolveTypeReference(
+            javaClass, typeArg, nodes,
+            explicitImports, wildcardImports, classesByPackage, classesBySimpleName
+          );
+          if (resolved && resolved !== javaClass.fullyQualifiedName) {
+            this.addDependency(javaClass.fullyQualifiedName, resolved, nodes, outboundDepsByNode, inboundDepsByNode);
+          }
         }
       }
     }

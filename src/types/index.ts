@@ -28,6 +28,35 @@ export interface AnalysisOptions {
   srpFieldThreshold: number;
 }
 
+export interface InjectionPoint {
+  fieldOrParam: string;
+  type: string;
+  mechanism: 'constructor' | 'field' | 'setter';
+  qualifierValue?: string;
+}
+
+export interface EndpointMapping {
+  path: string;
+  httpMethod: string;
+}
+
+export interface AnnotationDetail {
+  name: string;
+  params: Record<string, string>;
+}
+
+export interface TransactionalMethodInfo {
+  methodName: string;
+  propagation?: string;
+  readOnly?: boolean;
+  isolation?: string;
+}
+
+export interface GenericTypeRef {
+  rawType: string;
+  typeArgs: string[];
+}
+
 export interface JavaClass {
   fullyQualifiedName: string;
   packageName: string;
@@ -39,6 +68,14 @@ export interface JavaClass {
   repoSource: string;
   filePath: string;
   layer?: 'controller' | 'service' | 'repository' | 'entity' | 'config' | 'util';
+  superClass?: GenericTypeRef;
+  interfaces?: string[];
+  injectionPoints?: InjectionPoint[];
+  endpointMappings?: EndpointMapping[];
+  annotationDetails?: AnnotationDetail[];
+  transactionalMethods?: TransactionalMethodInfo[];
+  innerClasses?: string[];
+  genericSuperTypes?: GenericTypeRef[];
 }
 
 export interface GraphNode {
