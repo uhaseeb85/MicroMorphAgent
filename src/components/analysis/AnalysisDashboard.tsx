@@ -20,6 +20,8 @@ export function AnalysisDashboard({ onEditConfig, onCancel, resultsReady = false
     const filesProcessed = useAnalysisStore((state) => state.filesProcessed);
     const totalFiles = useAnalysisStore((state) => state.totalFiles);
     const currentFile = useAnalysisStore((state) => state.currentFile);
+    const filesFetched = useAnalysisStore((state) => state.filesFetched);
+    const totalFilesToFetch = useAnalysisStore((state) => state.totalFilesToFetch);
     const commitsFetched = useAnalysisStore((state) => state.commitsFetched);
     const llmCallsMade = useAnalysisStore((state) => state.llmCallsMade);
     const llmCallsTotal = useAnalysisStore((state) => state.llmCallsTotal);
@@ -130,10 +132,16 @@ export function AnalysisDashboard({ onEditConfig, onCancel, resultsReady = false
                         label="Files Processed"
                         value={filesProcessed}
                         total={totalFiles > 0 ? totalFiles : undefined}
-                        subtitle={isPhase2 && currentFile ? currentFile.split('/').slice(-2).join('/') : undefined}
+                        subtitle={isPhase2
+                            ? (totalFilesToFetch > 0 && filesFetched < totalFilesToFetch
+                                ? `Downloading ${filesFetched}/${totalFilesToFetch}...`
+                                : currentFile ? currentFile.split('/').slice(-2).join('/') : undefined)
+                            : undefined}
                         color="blue"
                         isActive={isPhase2}
-                        pulseText={isPhase2 ? 'Parsing...' : undefined}
+                        pulseText={isPhase2
+                            ? (totalFilesToFetch > 0 && filesFetched < totalFilesToFetch ? 'Fetching...' : 'Parsing...')
+                            : undefined}
                     />
 
                     <StatCard

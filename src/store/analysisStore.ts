@@ -24,6 +24,9 @@ interface AnalysisState {
   filesProcessed: number;
   totalFiles: number;
   currentFile: string;
+  filesFetched: number;
+  totalFilesToFetch: number;
+  currentFetchFile: string;
   commitsFetched: number;
   llmCallsMade: number;
   llmCallsTotal: number;
@@ -45,6 +48,7 @@ interface AnalysisState {
   resetPipeline: () => void;
 
   // Progress tracking actions
+  setFetchProgress: (fetched: number, total: number, current?: string) => void;
   setFileProgress: (processed: number, total: number, current?: string) => void;
   setGitProgress: (commits: number) => void;
   setLLMProgress: (made: number, total: number, current?: string) => void;
@@ -55,6 +59,7 @@ interface AnalysisState {
 }
 
 const MAX_ACTIVITY_ITEMS = 50;
+const FILE_LOG_INTERVAL = 25;
 
 export const useAnalysisStore = create<AnalysisState>((set, get) => ({
   config: null,
@@ -69,6 +74,9 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
   filesProcessed: 0,
   totalFiles: 0,
   currentFile: '',
+  filesFetched: 0,
+  totalFilesToFetch: 0,
+  currentFetchFile: '',
   commitsFetched: 0,
   llmCallsMade: 0,
   llmCallsTotal: 0,
@@ -89,6 +97,9 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
     filesProcessed: 0,
     totalFiles: 0,
     currentFile: '',
+    filesFetched: 0,
+    totalFilesToFetch: 0,
+    currentFetchFile: '',
     commitsFetched: 0,
     llmCallsMade: 0,
     llmCallsTotal: 0,
@@ -155,6 +166,9 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
     filesProcessed: 0,
     totalFiles: 0,
     currentFile: '',
+    filesFetched: 0,
+    totalFilesToFetch: 0,
+    currentFetchFile: '',
     commitsFetched: 0,
     llmCallsMade: 0,
     llmCallsTotal: 0,
@@ -167,12 +181,16 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
     activityLog: []
   }),
 
+  setFetchProgress: (filesFetched, totalFilesToFetch, currentFetchFile) => {
+    set({ filesFetched, totalFilesToFetch, currentFetchFile });
+  },
+
   setFileProgress: (filesProcessed, totalFiles, currentFile) => {
     set({ filesProcessed, totalFiles, currentFile });
-    if (currentFile) {
+    if (currentFile && filesProcessed % FILE_LOG_INTERVAL === 0) {
       get().addActivity({
         type: 'file',
-        message: `Parsed ${currentFile.split('/').pop()}`,
+        message: `Parsed ${filesProcessed} / ${totalFiles} files`,
         status: 'success'
       });
     }

@@ -14,8 +14,13 @@ export function ProgressBar({ phase, progressMessage }: ProgressBarProps) {
     const filesProcessed = useAnalysisStore((s) => s.filesProcessed);
     const totalFiles = useAnalysisStore((s) => s.totalFiles);
     const currentFile = useAnalysisStore((s) => s.currentFile);
+    const filesFetched = useAnalysisStore((s) => s.filesFetched);
+    const totalFilesToFetch = useAnalysisStore((s) => s.totalFilesToFetch);
+    const currentFetchFile = useAnalysisStore((s) => s.currentFetchFile);
     const isIngesting = phase === 2 && totalFiles > 0;
+    const isFetching = phase === 2 && totalFilesToFetch > 0 && filesFetched < totalFilesToFetch;
     const filePercent = totalFiles > 0 ? Math.round((filesProcessed / totalFiles) * 100) : 0;
+    const fetchPercent = totalFilesToFetch > 0 ? Math.round((filesFetched / totalFilesToFetch) * 100) : 0;
 
     return (
         <div
@@ -70,7 +75,35 @@ export function ProgressBar({ phase, progressMessage }: ProgressBarProps) {
                 </div>
             </div>
 
-            {/* File-level progress during Phase 2 (Code Ingestion) */}
+            {/* Fetch progress during Phase 2 */}
+            {isFetching && (
+                <div className="mt-4 neo-panel-soft rounded-2xl p-4 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 min-w-0">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse flex-shrink-0" />
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex-shrink-0">
+                                Downloading {filesFetched} / {totalFilesToFetch}
+                            </span>
+                        </div>
+                        <span className="text-xs font-bold text-foreground flex-shrink-0 ml-2">
+                            {fetchPercent}%
+                        </span>
+                    </div>
+                    <div className="neo-inset w-full h-1.5 rounded-full overflow-hidden">
+                        <div
+                            className="h-full rounded-full bg-amber-500 transition-all duration-200 ease-out"
+                            style={{ width: `${Math.max(1, fetchPercent)}%` }}
+                        />
+                    </div>
+                    {currentFetchFile && (
+                        <p className="text-[10px] font-mono text-muted-foreground truncate" title={currentFetchFile}>
+                            {currentFetchFile}
+                        </p>
+                    )}
+                </div>
+            )}
+
+            {/* Parse progress during Phase 2 (Code Ingestion) */}
             {isIngesting && (
                 <div className="mt-4 neo-panel-soft rounded-2xl p-4 space-y-2.5">
                     <div className="flex items-center justify-between">

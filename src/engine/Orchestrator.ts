@@ -102,14 +102,18 @@ export class Orchestrator {
       const javaClasses: JavaClass[] = [];
       if (isLocalRepo) {
         const localFileEntries = await localFetcher.listJavaFiles(primaryRepo, this.config.options.includeTestFiles);
-        store.setFileProgress(0, localFileEntries.length, '');
+        store.setFetchProgress(0, localFileEntries.length, '');
         store.addActivity({ type: 'git', message: `Found ${localFileEntries.length} Java files`, status: 'success' });
-        store.setPhase(2, `Parsing ${localFileEntries.length} Java files locally...`);
+        store.setPhase(2, `Reading & parsing ${localFileEntries.length} Java files...`);
 
         let globalParsed = 0;
         for (let offset = 0; offset < localFileEntries.length; offset += Orchestrator.LOCAL_FILE_READ_BATCH_SIZE) {
           const fileBatchEntries = localFileEntries.slice(offset, offset + Orchestrator.LOCAL_FILE_READ_BATCH_SIZE);
-          const javaFileBatch = await localFetcher.fetchJavaFileBatch(fileBatchEntries, primaryRepo);
+          const javaFileBatch = await localFetcher.fetchJavaFileBatch(fileBatchEntries, primaryRepo, {
+            onFileFetched: (filePath, fetchedSoFar) => {
+              store.setFetchProgress(offset + fetchedSoFar, localFileEntries.length, filePath);
+            }
+          });
           const parsedBatch = await this.parseJavaFilesInBatches(
             javaFileBatch,
             springParser,
@@ -122,10 +126,24 @@ export class Orchestrator {
           javaClasses.push(...parsedBatch);
         }
       } else {
-        const javaSourceFiles = await repoFetcher.fetchJavaFiles(primaryRepo, this.config.options.includeTestFiles);
-        store.setFileProgress(0, javaSourceFiles.length, '');
-        store.addActivity({ type: 'git', message: `Found ${javaSourceFiles.length} Java files`, status: 'success' });
+        // Fetch all Java file blobs with per-file progress
+        const javaSourceFiles = await repoFetcher.fetchJavaFiles(
+          primaryRepo,
+          this.config.options.includeTestFiles,
+          {
+            onFileDiscovered: (totalCount) => {
+              store.setFetchProgress(0, totalCount, '');
+              store.addActivity({ type: 'git', message: `Found ${totalCount} Java files — downloading...`, status: 'success' });
+              store.setPhase(2, `Downloading ${totalCount} Java files from GitHub...`);
+            },
+            onFileFetched: (filePath, fetchedSoFar, totalCount) => {
+              store.setFetchProgress(fetchedSoFar, totalCount, filePath);
+            }
+          }
+        );
 
+        store.addActivity({ type: 'git', message: `Downloaded all ${javaSourceFiles.length} files`, status: 'success' });
+        store.setFileProgress(0, javaSourceFiles.length, '');
         store.setPhase(2, `Parsing ${javaSourceFiles.length} Java files locally...`);
 
         for (let i = 0; i < javaSourceFiles.length; i++) {

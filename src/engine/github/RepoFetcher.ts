@@ -17,6 +17,11 @@ export interface JavaFile {
   repo: string;
 }
 
+export interface FetchProgressCallback {
+  onFileDiscovered?: (totalCount: number) => void;
+  onFileFetched?: (filePath: string, fetchedSoFar: number, totalCount: number) => void;
+}
+
 export class RepoFetcher {
   private octokit: Octokit;
   private rateLimiter: RateLimiter;
@@ -26,7 +31,11 @@ export class RepoFetcher {
     this.rateLimiter = new RateLimiter(50, 100);
   }
 
-  async fetchJavaFiles(repoInput: RepoInput, includeTestFiles: boolean): Promise<JavaFile[]> {
+  async fetchJavaFiles(
+    repoInput: RepoInput,
+    includeTestFiles: boolean,
+    progress?: FetchProgressCallback
+  ): Promise<JavaFile[]> {
     const { owner, repo } = this.parseRepoUrl(repoInput.url);
     const branch = repoInput.branch || 'HEAD';
 
@@ -49,27 +58,39 @@ export class RepoFetcher {
       .filter(f => includeTestFiles || !f.path.includes('/test/'));
 
     console.log(`Found ${javaFiles.length} Java files in ${repoInput.url}.`);
+    progress?.onFileDiscovered?.(javaFiles.length);
 
     if (javaFiles.length === 0) {
       return [];
     }
 
-    // Batch fetch content
-    return this.rateLimiter.batchFetch(javaFiles, async (fileNode) => {
-      const response = await this.octokit.git.getBlob({
-        owner,
-        repo,
-        file_sha: fileNode.sha!
-      });
-      
-      const content = decodeBase64(response.data.content);
-      
-      return {
-        path: fileNode.path,
-        content,
-        repo: repoInput.url
-      };
-    });
+    // Batch fetch content with per-item progress and timeout
+    let fetched = 0;
+    return this.rateLimiter.batchFetch(
+      javaFiles,
+      async (fileNode) => {
+        const response = await this.octokit.git.getBlob({
+          owner,
+          repo,
+          file_sha: fileNode.sha!
+        });
+        
+        const content = decodeBase64(response.data.content);
+        
+        return {
+          path: fileNode.path,
+          content,
+          repo: repoInput.url
+        };
+      },
+      {
+        itemTimeoutMs: 30_000,
+        onItemComplete: (fileNode) => {
+          fetched += 1;
+          progress?.onFileFetched?.(fileNode.path, fetched, javaFiles.length);
+        }
+      }
+    );
   }
 
   async fetchFileContent(repoUrl: string, path: string, branch = 'HEAD'): Promise<string> {

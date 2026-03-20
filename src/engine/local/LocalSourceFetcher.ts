@@ -8,6 +8,10 @@ export interface LocalFileEntry {
   handle: FileSystemFileHandle;
 }
 
+export interface LocalFetchProgressCallback {
+  onFileFetched?: (filePath: string, fetchedSoFar: number, totalCount: number) => void;
+}
+
 type FileSystemHandleEntry = FileSystemFileHandle | FileSystemDirectoryHandle;
 
 interface IterableDirectoryHandle extends FileSystemDirectoryHandle {
@@ -35,17 +39,31 @@ export class LocalSourceFetcher {
     });
   }
 
-  async fetchJavaFileBatch(entries: LocalFileEntry[], repoInput: RepoInput): Promise<JavaFile[]> {
-    return this.readLimiter.batchFetch(entries, async (entry) => {
-      const file = await entry.handle.getFile();
-      const content = await file.text();
+  async fetchJavaFileBatch(
+    entries: LocalFileEntry[],
+    repoInput: RepoInput,
+    progress?: LocalFetchProgressCallback
+  ): Promise<JavaFile[]> {
+    let fetched = 0;
+    return this.readLimiter.batchFetch(
+      entries,
+      async (entry) => {
+        const file = await entry.handle.getFile();
+        const content = await file.text();
 
-      return {
-        path: entry.path,
-        content,
-        repo: repoInput.displayName || repoInput.url
-      };
-    });
+        return {
+          path: entry.path,
+          content,
+          repo: repoInput.displayName || repoInput.url
+        };
+      },
+      {
+        onItemComplete: (entry) => {
+          fetched += 1;
+          progress?.onFileFetched?.(entry.path, fetched, entries.length);
+        }
+      }
+    );
   }
 
   async fetchFileContent(repoInput: RepoInput, relativePath: string): Promise<string> {
