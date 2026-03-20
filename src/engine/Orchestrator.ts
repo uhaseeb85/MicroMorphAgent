@@ -14,12 +14,17 @@ import { ModuleStructureGenerator } from './llm/ModuleStructureGenerator';
 import { ClassRefactoringAnalyzer } from './llm/ClassRefactoringAnalyzer';
 import { AnalysisConfig, DecompositionPlan, JavaClass, BoundedContext, GraphNode, ModuleStructure, RepoInput, ClassRefactoringSuggestion } from '../types';
 
+/** Yield control to the browser so React can repaint between CPU-heavy sync work. */
+const yieldToUI = (): Promise<void> => new Promise((r) => setTimeout(r, 0));
+
 export class Orchestrator {
   private readonly config: AnalysisConfig;
   private static readonly LOCAL_FILE_READ_BATCH_SIZE = 48;
   private static readonly LOCAL_PARSE_BATCH_SIZE = 6;
   private static readonly LLM_PACKAGE_SUMMARY_CONCURRENCY = 3;
   private static readonly LLM_MODULE_STRUCTURE_CONCURRENCY = 2;
+  /** How often (in files) to yield to the UI thread during parsing. */
+  private static readonly UI_YIELD_INTERVAL = 4;
 
   constructor(config: AnalysisConfig) {
     this.config = config;
@@ -101,19 +106,20 @@ export class Orchestrator {
         store.addActivity({ type: 'git', message: `Found ${localFileEntries.length} Java files`, status: 'success' });
         store.setPhase(2, `Parsing ${localFileEntries.length} Java files locally...`);
 
+        let globalParsed = 0;
         for (let offset = 0; offset < localFileEntries.length; offset += Orchestrator.LOCAL_FILE_READ_BATCH_SIZE) {
           const fileBatchEntries = localFileEntries.slice(offset, offset + Orchestrator.LOCAL_FILE_READ_BATCH_SIZE);
           const javaFileBatch = await localFetcher.fetchJavaFileBatch(fileBatchEntries, primaryRepo);
           const parsedBatch = await this.parseJavaFilesInBatches(
             javaFileBatch,
             springParser,
-            Orchestrator.LOCAL_PARSE_BATCH_SIZE
+            Orchestrator.LOCAL_PARSE_BATCH_SIZE,
+            (filePath) => {
+              globalParsed += 1;
+              store.setFileProgress(globalParsed, localFileEntries.length, filePath);
+            }
           );
           javaClasses.push(...parsedBatch);
-
-          const processedCount = Math.min(offset + fileBatchEntries.length, localFileEntries.length);
-          const lastProcessedPath = fileBatchEntries.at(-1)?.path || '';
-          store.setFileProgress(processedCount, localFileEntries.length, lastProcessedPath);
         }
       } else {
         const javaSourceFiles = await repoFetcher.fetchJavaFiles(primaryRepo, this.config.options.includeTestFiles);
@@ -127,8 +133,10 @@ export class Orchestrator {
           const parsed = springParser.parseSource(file.content, file.path, file.repo);
           javaClasses.push(parsed);
 
-          if (i % 10 === 0 || i === javaSourceFiles.length - 1) {
-            store.setFileProgress(i + 1, javaSourceFiles.length, file.path);
+          store.setFileProgress(i + 1, javaSourceFiles.length, file.path);
+          // Yield to the UI periodically so the browser can repaint
+          if (i % Orchestrator.UI_YIELD_INTERVAL === 0) {
+            await yieldToUI();
           }
         }
       }
@@ -558,16 +566,25 @@ export class Orchestrator {
   private async parseJavaFilesInBatches(
     javaFiles: Array<{ path: string; content: string; repo: string }>,
     springParser: SpringAnnotationParser,
-    batchSize: number
+    batchSize: number,
+    onFileParsed?: (filePath: string) => void
   ): Promise<JavaClass[]> {
     const parsedClasses: JavaClass[] = [];
+    let sinceLastYield = 0;
 
     for (let offset = 0; offset < javaFiles.length; offset += batchSize) {
       const parseBatch = javaFiles.slice(offset, offset + batchSize);
-      const parsedBatch = await Promise.all(
-        parseBatch.map(async (file) => springParser.parseSource(file.content, file.path, file.repo))
-      );
-      parsedClasses.push(...parsedBatch);
+      for (const file of parseBatch) {
+        const parsed = springParser.parseSource(file.content, file.path, file.repo);
+        parsedClasses.push(parsed);
+        onFileParsed?.(file.path);
+
+        sinceLastYield += 1;
+        if (sinceLastYield >= Orchestrator.UI_YIELD_INTERVAL) {
+          sinceLastYield = 0;
+          await yieldToUI();
+        }
+      }
     }
 
     return parsedClasses;

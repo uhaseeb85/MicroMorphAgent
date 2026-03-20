@@ -6,6 +6,7 @@ interface StatCardProps {
     value: number;
     total?: number;
     suffix?: string;
+    subtitle?: string;
     color: 'blue' | 'purple' | 'green' | 'orange' | 'pink';
     isActive?: boolean;
     pulseText?: string;
@@ -19,7 +20,7 @@ const colorMap = {
     pink: { accent: 'bg-rose-500/15 text-rose-700 dark:text-rose-200', progress: 'bg-rose-500' }
 };
 
-export function StatCard({ icon, label, value, total, suffix = '', color, isActive, pulseText }: StatCardProps) {
+export function StatCard({ icon, label, value, total, suffix = '', subtitle, color, isActive, pulseText }: StatCardProps) {
     const [displayValue, setDisplayValue] = useState(0);
     const colors = colorMap[color];
 
@@ -78,6 +79,14 @@ export function StatCard({ icon, label, value, total, suffix = '', color, isActi
                     {label}
                 </p>
             </div>
+
+            {subtitle && (
+                <div className="mt-2 min-h-[1.25rem]">
+                    <p className="text-[10px] font-medium text-muted-foreground truncate" title={subtitle}>
+                        {subtitle}
+                    </p>
+                </div>
+            )}
 
             {total !== undefined && total > 0 && (
                 <div className="mt-5 space-y-2">

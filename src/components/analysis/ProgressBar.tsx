@@ -1,4 +1,5 @@
 import React from 'react';
+import { useAnalysisStore } from '../../store/analysisStore';
 
 interface ProgressBarProps {
     phase: number;
@@ -9,6 +10,12 @@ export function ProgressBar({ phase, progressMessage }: ProgressBarProps) {
     const totalPhases = 5;
     const phaseProgress = Math.max(0, Math.min(phase, totalPhases));
     const percentage = (phaseProgress / totalPhases) * 100;
+
+    const filesProcessed = useAnalysisStore((s) => s.filesProcessed);
+    const totalFiles = useAnalysisStore((s) => s.totalFiles);
+    const currentFile = useAnalysisStore((s) => s.currentFile);
+    const isIngesting = phase === 2 && totalFiles > 0;
+    const filePercent = totalFiles > 0 ? Math.round((filesProcessed / totalFiles) * 100) : 0;
 
     return (
         <div
@@ -62,6 +69,34 @@ export function ProgressBar({ phase, progressMessage }: ProgressBarProps) {
                     />
                 </div>
             </div>
+
+            {/* File-level progress during Phase 2 (Code Ingestion) */}
+            {isIngesting && (
+                <div className="mt-4 neo-panel-soft rounded-2xl p-4 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 min-w-0">
+                            <span className="w-1.5 h-1.5 rounded-full bg-sky-500 animate-pulse flex-shrink-0" />
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex-shrink-0">
+                                Parsing file {filesProcessed} / {totalFiles}
+                            </span>
+                        </div>
+                        <span className="text-xs font-bold text-foreground flex-shrink-0 ml-2">
+                            {filePercent}%
+                        </span>
+                    </div>
+                    <div className="neo-inset w-full h-1.5 rounded-full overflow-hidden">
+                        <div
+                            className="h-full rounded-full bg-sky-500 transition-all duration-200 ease-out"
+                            style={{ width: `${Math.max(1, filePercent)}%` }}
+                        />
+                    </div>
+                    {currentFile && (
+                        <p className="text-[10px] font-mono text-muted-foreground truncate" title={currentFile}>
+                            {currentFile}
+                        </p>
+                    )}
+                </div>
+            )}
 
             <div className="flex justify-between mt-5 px-1">
                 {[1, 2, 3, 4, 5].map((p) => (

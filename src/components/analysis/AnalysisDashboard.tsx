@@ -19,6 +19,7 @@ export function AnalysisDashboard({ onEditConfig, onCancel, resultsReady = false
     const progressMessage = useAnalysisStore((state) => state.progressMessage);
     const filesProcessed = useAnalysisStore((state) => state.filesProcessed);
     const totalFiles = useAnalysisStore((state) => state.totalFiles);
+    const currentFile = useAnalysisStore((state) => state.currentFile);
     const commitsFetched = useAnalysisStore((state) => state.commitsFetched);
     const llmCallsMade = useAnalysisStore((state) => state.llmCallsMade);
     const llmCallsTotal = useAnalysisStore((state) => state.llmCallsTotal);
@@ -129,6 +130,7 @@ export function AnalysisDashboard({ onEditConfig, onCancel, resultsReady = false
                         label="Files Processed"
                         value={filesProcessed}
                         total={totalFiles > 0 ? totalFiles : undefined}
+                        subtitle={isPhase2 && currentFile ? currentFile.split('/').slice(-2).join('/') : undefined}
                         color="blue"
                         isActive={isPhase2}
                         pulseText={isPhase2 ? 'Parsing...' : undefined}
