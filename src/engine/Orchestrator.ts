@@ -408,30 +408,36 @@ export class Orchestrator {
 
     // Phase 4
     store.setPhase(4, 'Generating semantic package summaries via LLM...');
-    const demoPackages = ['owner', 'vet', 'visit', 'pet', 'system'];
+    const demoPackages = ['owner', 'vet', 'visit', 'notification', 'gateway'];
     store.setPackageProgress(0, demoPackages.length, '');
     store.setLLMProgress(0, demoPackages.length, '');
-    for(let i=0; i<demoPackages.length; i++) {
+    for (let i = 0; i < demoPackages.length; i++) {
       store.setLLMProgress(i, demoPackages.length, `Summarizing ${demoPackages[i]}...`);
-      await sleep(1800);
+      await sleep(1400);
       store.addActivity({ type: 'llm', message: `Analyzed package: ${demoPackages[i]}`, status: 'success' });
-      store.setPackageProgress(i+1, demoPackages.length, demoPackages[i]);
+      store.setPackageProgress(i + 1, demoPackages.length, demoPackages[i]);
     }
 
     // Phase 5
     store.setPhase(5, 'Identifying Microservice Bounded Contexts...');
     await sleep(1900);
-    store.addActivity({ type: 'llm', message: 'Identified 3 bounded contexts: Customer, Veterinary, Clinic', status: 'success' });
-    
+    store.addActivity({ type: 'llm', message: 'Identified 5 bounded contexts: Customer, Veterinary, Visit, Notification, API Gateway', status: 'success' });
+
     store.setPhase(5, 'Generating Extraction Roadmap...');
     await sleep(1400);
-    store.addActivity({ type: 'llm', message: 'Generated roadmap with 3 steps and 2 transactional risks', status: 'success' });
+    store.addActivity({ type: 'llm', message: 'Generated roadmap with 5 steps and 3 transactional risk areas', status: 'success' });
 
     store.setPhase(5, 'Generating module structures for each microservice...');
-    await sleep(1200);
-    store.addActivity({ type: 'llm', message: 'Generated Maven module structures for Customer Service', status: 'success' });
-    await sleep(900);
-    store.addActivity({ type: 'llm', message: 'Generated Maven module structures for Vet Service', status: 'success' });
+    await sleep(1000);
+    store.addActivity({ type: 'llm', message: 'Generated Maven module structure for Customer Service (25 files)', status: 'success' });
+    await sleep(800);
+    store.addActivity({ type: 'llm', message: 'Generated Maven module structure for Veterinary Service (23 files)', status: 'success' });
+    await sleep(800);
+    store.addActivity({ type: 'llm', message: 'Generated Maven module structure for Visit Service (24 files)', status: 'success' });
+    await sleep(800);
+    store.addActivity({ type: 'llm', message: 'Generated Maven module structure for Notification Service (23 files)', status: 'success' });
+    await sleep(800);
+    store.addActivity({ type: 'llm', message: 'Generated Maven module structure for API Gateway Service (23 files)', status: 'success' });
 
     store.setPhase(5, 'Analyzing large classes for SRP violations...');
     await sleep(1100);
@@ -445,17 +451,36 @@ export class Orchestrator {
       sharedLibAssessment: [],
       transactionalRisks: [
         {
-          description: 'Distributed transaction between Owner and Visit during deletion',
-          affectedClasses: ['OwnerController', 'VisitRepository'],
-          affectedDomains: ['Customer', 'Clinic'],
+          description: 'Distributed transaction between Customer and Visit during owner deletion',
+          affectedClasses: ['OwnerController', 'VisitRepository', 'AppointmentRepository'],
+          affectedDomains: ['Customer', 'Visit'],
           severity: 'high',
           mitigationPattern: 'saga',
-          explanation: 'Deleting an owner requires cascading deletes for visits across service boundaries.'
+          explanation: 'Deleting an owner requires cascading deletes across visit and appointment records held in the Visit service. A Saga with compensating transactions is required to maintain consistency without distributed locks.'
+        },
+        {
+          description: 'Dual-write race condition when Visit is created and Notification triggered',
+          affectedClasses: ['VisitServiceImpl', 'VisitCreatedListener', 'NotificationServiceImpl'],
+          affectedDomains: ['Visit', 'Notification'],
+          severity: 'medium',
+          mitigationPattern: 'outbox',
+          explanation: 'Publishing a Kafka event after a visit is persisted can fail silently, causing missed appointment reminders. The Transactional Outbox pattern ensures at-least-once delivery.'
+        },
+        {
+          description: 'Vet availability shared read across Visit and Veterinary services',
+          affectedClasses: ['AppointmentService', 'VetRepository'],
+          affectedDomains: ['Visit', 'Veterinary'],
+          severity: 'medium',
+          mitigationPattern: 'eventual-consistency',
+          explanation: 'Scheduling a visit reads vet availability from the Veterinary service. Caching with a short TTL and asynchronous sync events avoids tight coupling while tolerating brief stale reads.'
         }
       ],
       extractionRoadmap: [
-        { order: 1, boundedContext: 'Customer', estimatedEffort: 'weeks', blockers: [], patternRecommendations: ['Strangler Fig'], sagaRequired: true },
-        { order: 2, boundedContext: 'Veterinary', estimatedEffort: 'days', blockers: [], patternRecommendations: ['Direct Migration'], sagaRequired: false }
+        { order: 1, boundedContext: 'Veterinary', estimatedEffort: 'days', blockers: [], patternRecommendations: ['Direct Migration', 'Strangler Fig'], sagaRequired: false },
+        { order: 2, boundedContext: 'Notification', estimatedEffort: 'days', blockers: [], patternRecommendations: ['Event-Driven Extract'], sagaRequired: false },
+        { order: 3, boundedContext: 'Visit', estimatedEffort: 'weeks', blockers: ['Shared visit table with Customer schema'], patternRecommendations: ['Strangler Fig', 'Outbox Pattern'], sagaRequired: true },
+        { order: 4, boundedContext: 'Customer', estimatedEffort: 'weeks', blockers: ['Cross-service delete saga from Visit'], patternRecommendations: ['Strangler Fig', 'CQRS'], sagaRequired: true },
+        { order: 5, boundedContext: 'API Gateway', estimatedEffort: 'days', blockers: [], patternRecommendations: ['Spring Cloud Gateway'], sagaRequired: false }
       ],
       classRefactoringSuggestions: [
         {
@@ -524,51 +549,325 @@ export class Orchestrator {
           name: 'Customer',
           suggestedServiceName: 'customer-service',
           packages: ['org.springframework.samples.petclinic.owner'],
-          entities: ['Owner', 'Pet', 'PetType'],
-          apis: ['GET /owners', 'POST /owners', 'GET /owners/{id}'],
+          entities: ['Owner', 'Pet', 'PetType', 'BaseEntity'],
+          apis: ['GET /owners', 'POST /owners', 'PUT /owners/{id}', 'GET /owners/{id}', 'GET /owners/search'],
           inboundDependencyCount: 2,
-          outboundDependencyCount: 1,
-          sharedTableConflicts: ['visits'],
-          riskScore: 'medium',
-          riskRationale: 'Central domain with high shared data usage.',
-          llmRationale: 'The owner package contains the core entities but shares data with visits, requiring a saga pattern for consistency.',
+          outboundDependencyCount: 2,
+          sharedTableConflicts: ['visits', 'pets'],
+          riskScore: 'high',
+          riskRationale: 'Central domain with high shared data usage and cross-service delete saga dependency.',
+          llmRationale: 'The owner package manages core business entities shared across multiple contexts. The pets table is co-owned with Visit, requiring saga coordination during owner deletion.',
           proposedModuleStructure: {
             rootArtifactId: 'customer-service',
             mavenGroupId: 'com.petclinic.customer',
             directories: [
-              { path: 'src/main/java/com/petclinic/customer/domain', description: 'Domain Entities', files: ['Owner.java', 'Pet.java'] },
-              { path: 'src/main/java/com/petclinic/customer/web', description: 'REST Controllers', files: ['OwnerController.java'] }
+              {
+                path: 'src/main/java/com/petclinic/customer/domain',
+                description: 'Domain Entities',
+                files: ['Owner.java', 'Pet.java', 'PetType.java', 'BaseEntity.java', 'NamedEntity.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/customer/web',
+                description: 'REST Controllers',
+                files: ['OwnerController.java', 'PetController.java', 'OwnerValidator.java', 'PetValidator.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/customer/repository',
+                description: 'Spring Data Repositories',
+                files: ['OwnerRepository.java', 'PetRepository.java', 'PetTypeRepository.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/customer/service',
+                description: 'Business Logic Layer',
+                files: ['CustomerService.java', 'CustomerServiceImpl.java', 'PetService.java', 'PetServiceImpl.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/customer/dto',
+                description: 'Data Transfer Objects',
+                files: ['OwnerDTO.java', 'PetDTO.java', 'CreateOwnerRequest.java', 'UpdateOwnerRequest.java', 'OwnerSearchRequest.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/customer/mapper',
+                description: 'MapStruct Mappers',
+                files: ['OwnerMapper.java', 'PetMapper.java', 'PetTypeMapper.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/customer/config',
+                description: 'Spring Configuration',
+                files: ['SecurityConfig.java', 'DataSourceConfig.java', 'KafkaProducerConfig.java', 'SwaggerConfig.java', 'ApplicationConfig.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/customer/event',
+                description: 'Domain Events',
+                files: ['OwnerCreatedEvent.java', 'OwnerDeletedEvent.java', 'CustomerEventPublisher.java']
+              }
             ],
-            keyClasses: ['Owner', 'Pet'],
-            exposedApis: ['GET /api/v1/customers'],
-            consumedApis: [],
-            databaseSchema: 'Owns owners, pets tables.',
-            dockerfileSuggestion: 'FROM eclipse-temurin:21-jre'
+            keyClasses: ['Owner', 'Pet', 'CustomerService', 'OwnerController'],
+            exposedApis: ['GET /api/v1/customers', 'POST /api/v1/customers', 'PUT /api/v1/customers/{id}', 'DELETE /api/v1/customers/{id}', 'GET /api/v1/customers/{id}/pets'],
+            consumedApis: ['GET /api/v1/visits (Visit Service)', 'GET /api/v1/vets (Vet Service)'],
+            databaseSchema: 'Owns: owners, pets, pet_types tables. Shares read access to visits (deprecated after extraction).',
+            dockerfileSuggestion: 'FROM eclipse-temurin:21-jre-alpine\nWORKDIR /app\nCOPY target/customer-service.jar app.jar\nEXPOSE 8081\nENTRYPOINT ["java","-jar","app.jar"]'
           }
         },
         {
           name: 'Veterinary',
           suggestedServiceName: 'vet-service',
           packages: ['org.springframework.samples.petclinic.vet'],
-          entities: ['Vet', 'Specialty'],
-          apis: ['GET /vets'],
-          inboundDependencyCount: 0,
+          entities: ['Vet', 'Specialty', 'VetSpecialty'],
+          apis: ['GET /vets', 'GET /vets/{id}', 'GET /vets/{id}/specialties'],
+          inboundDependencyCount: 1,
           outboundDependencyCount: 0,
           sharedTableConflicts: [],
           riskScore: 'low',
-          riskRationale: 'Self-contained reference data.',
-          llmRationale: 'The vet package is purely informational and rarely changes alongside owners or visits.',
+          riskRationale: 'Self-contained reference data with no outbound dependencies.',
+          llmRationale: 'The vet package is purely informational and rarely changes alongside owners or visits. Ideal first extraction candidate due to zero shared table conflicts.',
           proposedModuleStructure: {
             rootArtifactId: 'vet-service',
             mavenGroupId: 'com.petclinic.vet',
             directories: [
-              { path: 'src/main/java/com/petclinic/vet/domain', description: 'Domain Entities', files: ['Vet.java'] }
+              {
+                path: 'src/main/java/com/petclinic/vet/domain',
+                description: 'Domain Entities',
+                files: ['Vet.java', 'Specialty.java', 'VetSpecialty.java', 'BaseEntity.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/vet/web',
+                description: 'REST Controllers',
+                files: ['VetController.java', 'SpecialtyController.java', 'VetAvailabilityController.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/vet/repository',
+                description: 'Spring Data Repositories',
+                files: ['VetRepository.java', 'SpecialtyRepository.java', 'VetSpecialtyRepository.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/vet/service',
+                description: 'Business Logic Layer',
+                files: ['VetService.java', 'VetServiceImpl.java', 'SpecialtyService.java', 'VetAvailabilityService.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/vet/dto',
+                description: 'Data Transfer Objects',
+                files: ['VetDTO.java', 'SpecialtyDTO.java', 'VetListDTO.java', 'VetAvailabilityDTO.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/vet/mapper',
+                description: 'MapStruct Mappers',
+                files: ['VetMapper.java', 'SpecialtyMapper.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/vet/cache',
+                description: 'Caching Layer',
+                files: ['VetCacheConfig.java', 'VetCacheService.java', 'CacheEvictionListener.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/vet/event',
+                description: 'Domain Events',
+                files: ['VetCreatedEvent.java', 'VetUpdatedEvent.java', 'VetEventPublisher.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/vet/config',
+                description: 'Spring Configuration',
+                files: ['SecurityConfig.java', 'DataSourceConfig.java', 'CacheConfig.java', 'SwaggerConfig.java']
+              }
             ],
-            keyClasses: ['Vet'],
-            exposedApis: ['GET /api/v1/vets'],
+            keyClasses: ['Vet', 'Specialty', 'VetService', 'VetController'],
+            exposedApis: ['GET /api/v1/vets', 'GET /api/v1/vets/{id}', 'GET /api/v1/vets/{id}/specialties'],
             consumedApis: [],
-            databaseSchema: 'Owns vets, specialties tables.',
-            dockerfileSuggestion: 'FROM eclipse-temurin:21-jre'
+            databaseSchema: 'Owns: vets, specialties, vet_specialties tables.',
+            dockerfileSuggestion: 'FROM eclipse-temurin:21-jre-alpine\nWORKDIR /app\nCOPY target/vet-service.jar app.jar\nEXPOSE 8082\nENTRYPOINT ["java","-jar","app.jar"]'
+          }
+        },
+        {
+          name: 'Visit',
+          suggestedServiceName: 'visit-service',
+          packages: ['org.springframework.samples.petclinic.visit'],
+          entities: ['Visit', 'Appointment', 'AppointmentStatus'],
+          apis: ['GET /visits', 'POST /visits', 'GET /pets/{petId}/visits', 'POST /appointments', 'PUT /appointments/{id}/cancel'],
+          inboundDependencyCount: 3,
+          outboundDependencyCount: 2,
+          sharedTableConflicts: ['visits', 'pets'],
+          riskScore: 'high',
+          riskRationale: 'Shared visit table with Customer service and saga dependency for owner deletion.',
+          llmRationale: 'The visit and appointment logic is tightly coupled to both owner and vet data. Extraction requires an Outbox pattern for Kafka events and a Saga for cross-service delete flows.',
+          proposedModuleStructure: {
+            rootArtifactId: 'visit-service',
+            mavenGroupId: 'com.petclinic.visit',
+            directories: [
+              {
+                path: 'src/main/java/com/petclinic/visit/domain',
+                description: 'Domain Entities',
+                files: ['Visit.java', 'Appointment.java', 'AppointmentStatus.java', 'TimeSlot.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/visit/web',
+                description: 'REST Controllers',
+                files: ['VisitController.java', 'AppointmentController.java', 'VisitValidator.java', 'AppointmentValidator.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/visit/repository',
+                description: 'Spring Data Repositories',
+                files: ['VisitRepository.java', 'AppointmentRepository.java', 'TimeSlotRepository.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/visit/service',
+                description: 'Business Logic Layer',
+                files: ['VisitService.java', 'VisitServiceImpl.java', 'AppointmentService.java', 'SchedulingService.java', 'SchedulingServiceImpl.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/visit/dto',
+                description: 'Data Transfer Objects',
+                files: ['VisitDTO.java', 'CreateVisitRequest.java', 'AppointmentDTO.java', 'TimeSlotDTO.java', 'AvailabilityRequest.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/visit/event',
+                description: 'Domain Events',
+                files: ['VisitCreatedEvent.java', 'VisitCancelledEvent.java', 'AppointmentConfirmedEvent.java', 'VisitEventPublisher.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/visit/saga',
+                description: 'Saga Orchestration',
+                files: ['OwnerDeletionSaga.java', 'SagaOrchestrator.java', 'SagaStep.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/visit/mapper',
+                description: 'MapStruct Mappers',
+                files: ['VisitMapper.java', 'AppointmentMapper.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/visit/config',
+                description: 'Spring Configuration',
+                files: ['KafkaProducerConfig.java', 'SecurityConfig.java', 'DataSourceConfig.java', 'SwaggerConfig.java']
+              }
+            ],
+            keyClasses: ['Visit', 'Appointment', 'VisitService', 'OwnerDeletionSaga'],
+            exposedApis: ['POST /api/v1/visits', 'GET /api/v1/visits/{id}', 'GET /api/v1/pets/{petId}/visits', 'POST /api/v1/appointments', 'PUT /api/v1/appointments/{id}/cancel'],
+            consumedApis: ['GET /api/v1/customers/{id} (Customer Service)', 'GET /api/v1/vets/{id}/availability (Vet Service)'],
+            databaseSchema: 'Owns: visits, appointments, time_slots tables. Migrated from shared visits table in monolith.',
+            dockerfileSuggestion: 'FROM eclipse-temurin:21-jre-alpine\nWORKDIR /app\nCOPY target/visit-service.jar app.jar\nEXPOSE 8083\nENTRYPOINT ["java","-jar","app.jar"]'
+          }
+        },
+        {
+          name: 'Notification',
+          suggestedServiceName: 'notification-service',
+          packages: ['org.springframework.samples.petclinic.notification'],
+          entities: ['Notification', 'NotificationType', 'NotificationTemplate'],
+          apis: ['POST /notifications/send', 'GET /notifications/{ownerId}', 'PUT /notifications/{id}/read'],
+          inboundDependencyCount: 2,
+          outboundDependencyCount: 0,
+          sharedTableConflicts: [],
+          riskScore: 'low',
+          riskRationale: 'Event-driven with no synchronous outbound dependencies.',
+          llmRationale: 'Notification is a pure consumer of domain events from Visit and Customer services. There are no shared tables and no blocking RPC calls, making it safe to extract early.',
+          proposedModuleStructure: {
+            rootArtifactId: 'notification-service',
+            mavenGroupId: 'com.petclinic.notification',
+            directories: [
+              {
+                path: 'src/main/java/com/petclinic/notification/domain',
+                description: 'Domain Entities',
+                files: ['Notification.java', 'NotificationType.java', 'NotificationTemplate.java', 'NotificationChannel.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/notification/web',
+                description: 'REST Controllers',
+                files: ['NotificationController.java', 'TemplateController.java', 'NotificationPreferenceController.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/notification/repository',
+                description: 'Spring Data Repositories',
+                files: ['NotificationRepository.java', 'TemplateRepository.java', 'PreferenceRepository.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/notification/service',
+                description: 'Business Logic Layer',
+                files: ['NotificationService.java', 'NotificationServiceImpl.java', 'EmailService.java', 'SmsService.java', 'TemplateRenderService.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/notification/dto',
+                description: 'Data Transfer Objects',
+                files: ['NotificationDTO.java', 'SendNotificationRequest.java', 'TemplateDTO.java', 'NotificationPreferenceDTO.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/notification/listener',
+                description: 'Kafka Event Listeners',
+                files: ['VisitCreatedListener.java', 'VisitCancelledListener.java', 'AppointmentReminderListener.java', 'OwnerCreatedListener.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/notification/scheduler',
+                description: 'Scheduled Jobs',
+                files: ['ReminderScheduler.java', 'NotificationCleanupJob.java', 'DigestScheduler.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/notification/config',
+                description: 'Spring Configuration',
+                files: ['KafkaConsumerConfig.java', 'MailConfig.java', 'SecurityConfig.java', 'SchedulerConfig.java', 'ThymeleafConfig.java']
+              }
+            ],
+            keyClasses: ['Notification', 'NotificationService', 'VisitCreatedListener', 'ReminderScheduler'],
+            exposedApis: ['POST /api/v1/notifications/send', 'GET /api/v1/notifications/owner/{ownerId}', 'PUT /api/v1/notifications/{id}/read'],
+            consumedApis: [],
+            databaseSchema: 'Owns: notifications, notification_templates, notification_preferences tables.',
+            dockerfileSuggestion: 'FROM eclipse-temurin:21-jre-alpine\nWORKDIR /app\nCOPY target/notification-service.jar app.jar\nEXPOSE 8084\nENTRYPOINT ["java","-jar","app.jar"]'
+          }
+        },
+        {
+          name: 'API Gateway',
+          suggestedServiceName: 'api-gateway',
+          packages: ['org.springframework.samples.petclinic.gateway'],
+          entities: ['ApiUser', 'Role', 'Permission'],
+          apis: ['POST /auth/login', 'POST /auth/refresh', 'POST /auth/logout', 'GET /actuator/health'],
+          inboundDependencyCount: 0,
+          outboundDependencyCount: 4,
+          sharedTableConflicts: [],
+          riskScore: 'medium',
+          riskRationale: 'Cross-cutting concern that proxies all downstream services — JWT misconfiguration can impact all services.',
+          llmRationale: 'The gateway centralises routing, rate limiting, and JWT validation for all microservices. Using Spring Cloud Gateway with Redis token blacklisting provides a secure and scalable entry point.',
+          proposedModuleStructure: {
+            rootArtifactId: 'api-gateway',
+            mavenGroupId: 'com.petclinic.gateway',
+            directories: [
+              {
+                path: 'src/main/java/com/petclinic/gateway/routes',
+                description: 'Route Definitions',
+                files: ['GatewayRoutesConfig.java', 'CustomerRouteConfig.java', 'VetRouteConfig.java', 'VisitRouteConfig.java', 'NotificationRouteConfig.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/gateway/security',
+                description: 'Security & Auth',
+                files: ['JwtAuthFilter.java', 'JwtTokenProvider.java', 'SecurityConfig.java', 'CorsConfig.java', 'TokenBlacklistService.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/gateway/filter',
+                description: 'Gateway Filters',
+                files: ['RateLimitFilter.java', 'LoggingFilter.java', 'AuthorizationFilter.java', 'RequestIdFilter.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/gateway/domain',
+                description: 'Domain Entities',
+                files: ['ApiUser.java', 'Role.java', 'Permission.java', 'RefreshToken.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/gateway/service',
+                description: 'Business Logic Layer',
+                files: ['AuthenticationService.java', 'UserDetailsServiceImpl.java', 'RefreshTokenService.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/gateway/dto',
+                description: 'Data Transfer Objects',
+                files: ['LoginRequest.java', 'JwtResponse.java', 'RefreshTokenRequest.java', 'ErrorResponse.java']
+              },
+              {
+                path: 'src/main/java/com/petclinic/gateway/config',
+                description: 'Spring Configuration',
+                files: ['RedisConfig.java', 'ActuatorConfig.java', 'SwaggerConfig.java', 'CircuitBreakerConfig.java']
+              }
+            ],
+            keyClasses: ['JwtAuthFilter', 'JwtTokenProvider', 'GatewayRoutesConfig', 'AuthenticationService'],
+            exposedApis: ['POST /auth/login', 'POST /auth/refresh', 'POST /auth/logout', 'GET /actuator/health', 'GET /actuator/metrics'],
+            consumedApis: ['/* (Customer Service)', '/* (Vet Service)', '/* (Visit Service)', '/* (Notification Service)'],
+            databaseSchema: 'Owns: api_users, roles, permissions, refresh_tokens tables. Redis for token blacklist.',
+            dockerfileSuggestion: 'FROM eclipse-temurin:21-jre-alpine\nWORKDIR /app\nCOPY target/api-gateway.jar app.jar\nEXPOSE 8080\nENTRYPOINT ["java","-jar","app.jar"]'
           }
         }
       ]

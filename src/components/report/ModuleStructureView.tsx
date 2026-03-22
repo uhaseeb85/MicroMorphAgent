@@ -19,12 +19,12 @@ function FileTreeEntry({ path, description, files }: { path: string; description
             {description}
         </span>
       </button>
-      <div className={`overflow-hidden transition-all duration-300 ${open ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
+      <div className={`overflow-hidden transition-all duration-300 ${open ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}>
           {files.map((f, i) => (
-            <div key={i} className="flex items-center gap-2.5 py-1 pl-6">
+            <div key={i} className="flex items-center gap-2.5 py-1.5 pl-6">
               <div className="w-[1px] h-4 bg-border" />
-              <div className="w-1.5 h-1.5 border border-border rounded-sm" />
-              <span className="text-[11px] font-mono font-medium text-muted-foreground">{f}</span>
+              <div className="w-2 h-2 border border-border rounded-sm flex-shrink-0" />
+              <span className="text-sm font-mono font-semibold text-foreground tracking-tight">{f}</span>
             </div>
           ))}
       </div>
