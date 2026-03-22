@@ -87,6 +87,17 @@ export function ModuleStructureView({ structure }: { structure: ModuleStructure 
 
         {activeTab === 'apis' && (
           <div className="space-y-8">
+            {structure.exposedApis.length === 0 && structure.consumedApis.length === 0 ? (
+              <div className="neo-inset rounded-2xl p-6 text-center">
+                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                  No REST Endpoints — Internal Service Layer
+                </p>
+                <p className="text-xs text-muted-foreground/70 mt-2 leading-relaxed">
+                  This service exposes no HTTP endpoints. It operates as an internal library, shared utility module, or pure domain/business-logic layer consumed by other services.
+                </p>
+              </div>
+            ) : (
+              <>
             {structure.exposedApis.length > 0 && (
               <div>
                 <h5 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-4 flex items-center gap-2">
@@ -127,6 +138,8 @@ export function ModuleStructureView({ structure }: { structure: ModuleStructure 
                   ))}
                 </div>
               </div>
+            )}
+              </>
             )}
             <div>
                <h5 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-2">

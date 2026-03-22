@@ -51,7 +51,7 @@ export class BoundedContextAnalyzer {
       '      "suggestedServiceName": "string (e.g. order-service)",',
       '      "packages": ["string"],',
       '      "entities": ["string"],',
-      '      "apis": ["string (e.g. GET /api/orders)"],',
+      '      "apis": ["string (e.g. GET /api/orders) — use an empty array [] for pure service layers or internal libraries with no REST endpoints"],',
       '      "inboundDependencyCount": number,',
       '      "outboundDependencyCount": number,',
       '      "sharedTableConflicts": ["string (e.g. users_table split)"],',
@@ -61,6 +61,7 @@ export class BoundedContextAnalyzer {
       '    }',
       '  ]',
       '}',
+      'Note: Some bounded contexts may be pure service layers, shared utility modules, or internal libraries with no REST endpoints. For these, use an empty "apis" array — do not fabricate endpoints.',
       'Do not use markdown code fences. Only output raw JSON.'
     ].join('\n');
 

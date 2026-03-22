@@ -33,7 +33,7 @@ export function BoundedContextCard({ context }: { context: BoundedContext }) {
         </div>
 
         {/* Stats row */}
-        <div className="flex gap-4">
+        <div className="flex gap-4 flex-wrap">
           {[
             { label: 'Artifacts', value: context.packages.length, icon: '📦' },
             { label: 'Schemas', value: context.entities.length, icon: '🗄️' },
@@ -45,6 +45,13 @@ export function BoundedContextCard({ context }: { context: BoundedContext }) {
                 <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{s.label}</span>
             </div>
           ))}
+          {context.apis.length === 0 && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-[9px] font-bold uppercase tracking-widest text-sky-600 px-1.5 py-0.5 rounded-lg bg-sky-50 border border-sky-100">
+                Service Layer
+              </span>
+            </div>
+          )}
         </div>
       </div>
 

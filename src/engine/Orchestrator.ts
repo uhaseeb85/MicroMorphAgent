@@ -780,12 +780,13 @@ export class Orchestrator {
     const basePath = `src/main/java/${groupId.replace(/\./g, '/')}`;
     const entityFiles = context.entities.map((entity) => `${entity}.java`);
     const controllerFiles = context.apis.map((api) => api.replace('Controller: ', '')).map((name) => `${name}.java`);
+    const hasApis = context.apis.length > 0;
 
     return {
       rootArtifactId: artifactId,
       mavenGroupId: groupId,
       directories: [
-        { path: `${basePath}/controller`, description: 'REST entrypoints inferred from controller classes', files: controllerFiles },
+        ...(hasApis ? [{ path: `${basePath}/controller`, description: 'REST entrypoints inferred from controller classes', files: controllerFiles }] : []),
         { path: `${basePath}/service`, description: 'Application and domain orchestration services', files: context.entities.map((entity) => `${entity}Service.java`) },
         { path: `${basePath}/repository`, description: 'Persistence adapters and repositories', files: context.entities.map((entity) => `${entity}Repository.java`) },
         { path: `${basePath}/domain`, description: 'Domain entities and core value objects', files: entityFiles },
@@ -793,7 +794,7 @@ export class Orchestrator {
         { path: 'src/main/resources', description: 'Application configuration', files: ['application.yml'] }
       ],
       keyClasses: context.entities.map((entity) => `${groupId}.domain.${entity}`),
-      exposedApis: context.apis.length > 0 ? context.apis : [`GET /api/${artifactId.replace(/-service$/, '')}`],
+      exposedApis: context.apis,
       consumedApis: [],
       databaseSchema: context.entities.length > 0
         ? `Likely owns ${context.entities.map((entity) => entity.toLowerCase()).join(', ')} data structures.`

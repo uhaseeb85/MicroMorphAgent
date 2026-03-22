@@ -89,9 +89,11 @@ export class Summarizer {
 
     const systemPrompt = `You are a strict Spring Boot analysis tool computing package summaries.
 Analyze the provided package structure and output ONLY a valid JSON object describing:
-1. 'domain': the business domain this package represents (e.g. 'Billing', 'User Management', 'Core Infra')
-2. 'role': its architectural role (e.g. 'persistence layer', 'controller orchestration', 'domain logic')
+1. 'domain': the business domain this package represents (e.g. 'Billing', 'User Management', 'Core Infra', 'Shared Utilities')
+2. 'role': its architectural role (e.g. 'persistence layer', 'controller orchestration', 'domain logic', 'shared utility library', 'internal service layer')
 3. 'couplingConcerns': risk analysis of dependencies outside its domain
+
+Note: Packages that have no REST endpoints are valid service-layer or utility packages. Identify them accurately as internal libraries or service layers rather than assuming REST API presence.
 
 Response Schema:
 {

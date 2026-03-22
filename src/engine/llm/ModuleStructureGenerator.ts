@@ -27,6 +27,7 @@ Return ONLY a raw JSON object matching this EXACT schema:
   "databaseSchema": "string (short description of owned tables or collections)",
   "dockerfileSuggestion": "string (one-line dockerfile hint, e.g. FROM eclipse-temurin:21-jre)"
 }
+Important: If the service has no REST API endpoints (e.g. it is a pure internal service library, shared utility module, or domain logic layer), set "exposedApis" to an empty array [] and omit the controller directory from "directories".
 Do NOT include markdown, only output the JSON object.`;
 
     const userPrompt = `Microservice Context:
@@ -52,23 +53,31 @@ Rationale: ${context.llmRationale}`;
     const artifactId = context.suggestedServiceName;
     const groupId = `${baseGroupId}.${artifactId.replace(/-/g, '.')}`;
     const basePath = `src/main/java/${groupId.replace(/\./g, '/')}`;
+    const hasApis = context.apis.length > 0;
+    const controllerFiles = context.entities.length > 0
+      ? context.entities.map(e => `${e}Controller.java`)
+      : [`${artifactId.split('-').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join('')}Controller.java`];
+
+    const directories = [
+      ...(hasApis ? [{ path: `${basePath}/controller`, description: 'REST API controllers (Spring MVC)', files: controllerFiles }] : []),
+      { path: `${basePath}/service`, description: 'Business logic and orchestration', files: context.entities.map(e => `${e}Service.java`) },
+      { path: `${basePath}/repository`, description: 'JPA Repositories and query methods', files: context.entities.map(e => `${e}Repository.java`) },
+      { path: `${basePath}/domain`, description: 'JPA Entities and domain objects', files: context.entities.map(e => `${e}.java`) },
+      { path: `${basePath}/config`, description: 'Spring configuration classes', files: ['ServiceConfig.java', 'SecurityConfig.java'] },
+      { path: 'src/main/resources', description: 'Application config', files: ['application.yml', 'application-docker.yml'] },
+      { path: 'src/test/java', description: 'Unit and integration tests', files: [] },
+    ];
 
     return {
       rootArtifactId: artifactId,
       mavenGroupId: groupId,
-      directories: [
-        { path: `${basePath}/controller`, description: 'REST API controllers (Spring MVC)', files: context.entities.map(e => `${e}Controller.java`) },
-        { path: `${basePath}/service`, description: 'Business logic and orchestration', files: context.entities.map(e => `${e}Service.java`) },
-        { path: `${basePath}/repository`, description: 'JPA Repositories and query methods', files: context.entities.map(e => `${e}Repository.java`) },
-        { path: `${basePath}/domain`, description: 'JPA Entities and domain objects', files: context.entities.map(e => `${e}.java`) },
-        { path: `${basePath}/config`, description: 'Spring configuration classes', files: ['ServiceConfig.java', 'SecurityConfig.java'] },
-        { path: 'src/main/resources', description: 'Application config', files: ['application.yml', 'application-docker.yml'] },
-        { path: 'src/test/java', description: 'Unit and integration tests', files: [] },
-      ],
+      directories,
       keyClasses: context.entities.map(e => `${groupId}.domain.${e}`),
-      exposedApis: context.apis.length > 0 ? context.apis : [`GET /api/${artifactId.replace('-service', '')}`, `POST /api/${artifactId.replace('-service', '')}`],
+      exposedApis: context.apis,
       consumedApis: [],
-      databaseSchema: `Owns tables: ${context.entities.map(e => e.toLowerCase() + 's').join(', ')}`,
+      databaseSchema: context.entities.length > 0
+        ? `Owns tables: ${context.entities.map(e => e.toLowerCase() + 's').join(', ')}`
+        : 'No entity ownership detected — shared utility or service library.',
       dockerfileSuggestion: 'FROM eclipse-temurin:21-jre-jammy\nCOPY target/*.jar app.jar\nENTRYPOINT ["java","-jar","/app.jar"]'
     };
   }
