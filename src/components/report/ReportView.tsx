@@ -260,6 +260,14 @@ function ServiceDetail({ context, index, total }: { context: BoundedContext; ind
                 </div>
               ))}
             </div>
+            {context.apis.length === 0 && (
+              <div className="mt-2 flex items-center gap-2 px-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-sky-400" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-sky-600">
+                  Internal Service Layer — No REST Endpoints Exposed
+                </span>
+              </div>
+            )}
         </div>
 
         <div className="grid lg:grid-cols-2 gap-10">
