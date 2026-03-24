@@ -74,12 +74,7 @@ export function OnboardingForm({ onSubmit, embedded }: { onSubmit?: () => void; 
       const resp = await fetch('https://openrouter.ai/api/v1/models');
       const data = await resp.json();
       if (data.data) {
-        const sorted = [...data.data].sort((a: OpenRouterModel, b: OpenRouterModel) => {
-          const costA = parseFloat(a.pricing?.prompt || '0') + parseFloat(a.pricing?.completion || '0');
-          const costB = parseFloat(b.pricing?.prompt || '0') + parseFloat(b.pricing?.completion || '0');
-          return costB - costA;
-        });
-        setOrModels(sorted);
+        setOrModels(data.data);
       }
     } catch (e) {
       console.error('Failed to fetch OpenRouter models', e);
@@ -399,15 +394,9 @@ export function OnboardingForm({ onSubmit, embedded }: { onSubmit?: () => void; 
                 onBlur={inputBlur}
               >
                 {orModels.length > 0 ? (
-                  orModels.map(m => {
-                    const promptCost = parseFloat(m.pricing?.prompt || '0');
-                    const completionCost = parseFloat(m.pricing?.completion || '0');
-                    const fmtCost = (n: number) => n === 0 ? 'free' : `$${(n * 1_000_000).toFixed(2)}/M`;
-                    const costLabel = `in ${fmtCost(promptCost)} · out ${fmtCost(completionCost)}`;
-                    return (
-                      <option key={m.id} value={m.id}>{m.name}  —  {costLabel}</option>
-                    );
-                  })
+                  orModels.map(m => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))
                 ) : (
                   <>
                     <option value="anthropic/claude-3.7-sonnet">Claude 3.7 Sonnet</option>
