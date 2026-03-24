@@ -1,6 +1,18 @@
 import React from 'react';
 import { ExtractionStep } from '../../types';
 
+const PATTERN_TOOLTIPS: Record<string, string> = {
+  'direct migration': 'Move one bounded context from the monolith into a new service in a single cutover.',
+  'strangler fig': 'Replace monolith functionality gradually by routing selected capabilities to a new service over time.',
+  'strangler fig pattern': 'Replace monolith functionality gradually by routing selected capabilities to a new service over time.',
+  'event-driven extract': 'Extract the service behind asynchronous domain events so it reacts to messages instead of tight synchronous calls.',
+  'outbox pattern': 'Persist events in the same transaction as business data, then publish them asynchronously to avoid losing messages.'
+};
+
+function getPatternTooltip(pattern: string): string | undefined {
+  return PATTERN_TOOLTIPS[pattern.trim().toLowerCase()];
+}
+
 export function ExtractionRoadmap({ steps }: { steps: ExtractionStep[] }) {
   if (!steps || steps.length === 0) return null;
 
@@ -69,11 +81,21 @@ export function ExtractionRoadmap({ steps }: { steps: ExtractionStep[] }) {
                     Pattern Architecture
                   </h4>
                   <div className="flex flex-wrap gap-2">
-                    {step.patternRecommendations.map((p, i) => (
-                      <span key={i} className="neo-button-primary text-[10px] font-mono font-bold uppercase tracking-tighter rounded-xl px-3 py-1.5">
-                        {p}
-                      </span>
-                    ))}
+                    {step.patternRecommendations.map((pattern, index) => {
+                      const tooltip = getPatternTooltip(pattern);
+
+                      return (
+                        <span
+                          key={index}
+                          className="neo-button-primary text-[10px] font-mono font-bold uppercase tracking-tighter rounded-xl px-3 py-1.5"
+                          title={tooltip}
+                          aria-label={tooltip ? `${pattern}: ${tooltip}` : pattern}
+                          style={tooltip ? { cursor: 'help' } : undefined}
+                        >
+                          {pattern}
+                        </span>
+                      );
+                    })}
                   </div>
                 </div>
               )}
